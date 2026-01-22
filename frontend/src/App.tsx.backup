@@ -1,0 +1,240 @@
+// frontend/src/App.tsx
+import { useState, useEffect, createContext, useContext } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import axios from "axios";
+import { Toaster } from "sonner";
+import { toast } from "sonner";
+
+// Import pages
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import StudentDashboard from "./pages/StudentDashboard";
+import LessonsPage from "./pages/LessonsPage";
+import LessonViewPage from "./pages/LessonsViewPage";
+import QuizzesPage from "./pages/QuizzesPage";
+import QuizPlayerPage from "./pages/QuizPlayerPage";
+import GamesPage from "./pages/GamesPage";
+import GamePlayerPage from "./pages/GamePlayerPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import AchievementsPage from "./pages/AchievementsPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import ParentDashboard from "./pages/ParentDashboard";
+import TeacherDashboard from "./pages/TeacherDashboard";
+
+import "./App.css";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+
+// ==================== Auth Context ====================
+interface AuthContextType {
+  user: { username: string; role: string; [key: string]: unknown } | null;
+  loading: boolean;
+  login: (username: string, password: string) => Promise<unknown>;
+  register: (userData: unknown) => Promise<unknown>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+
+// ==================== API client with auth ====================
+export const apiClient = axios.create({
+  baseURL: BACKEND_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("questlab_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("questlab_token");
+      localStorage.removeItem("questlab_user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth Provider
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthContextType["user"]>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("questlab_user");
+    const token = localStorage.getItem("questlab_token");
+    
+    if (storedUser && token) {
+      setUser(JSON.parse(storedUser));
+      apiClient.get("/users/me").then((res) => {
+        setUser(res.data);
+        localStorage.setItem("questlab_user", JSON.stringify(res.data));
+      }).catch(() => {
+        localStorage.removeItem("questlab_token");
+        localStorage.removeItem("questlab_user");
+        setUser(null);
+      }).finally(() => {
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+// ✎ᝰ.📖Login function✎ᝰ.📖
+
+const login = async (username: string, password: string) => {
+  try {
+    // OAuth2PasswordRequestForm expects form data with username and password fields
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+    
+    const res = await apiClient.post("/token", formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    localStorage.setItem("questlab_token", res.data.access_token);
+    const userRes = await apiClient.get("/users/me");
+    localStorage.setItem("questlab_user", JSON.stringify(userRes.data));
+    setUser(userRes.data);
+    toast.success(`Welcome back, ${userRes.data.username}!`);
+    return userRes.data;
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || "Login failed");
+    throw error;
+  }
+};
+
+  const register = async (userData: any) => {
+    try {
+      const res = await apiClient.post("/register", userData);
+      toast.success("Registration successful! Please log in.");
+      return res.data;
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || "Registration failed");
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem("questlab_token");
+    localStorage.removeItem("questlab_user");
+    setUser(null);
+    toast.success("Logged out successfully");
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// Protected Route
+function ProtectedRoute({ children, allowedRoles }: { 
+  children: React.ReactNode, 
+  allowedRoles?: string[] 
+}) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    const dashboardRoutes: Record<string, string> = {
+      admin: "/admin",
+      teacher: "/teacher",
+      parent: "/parent",
+      student: "/dashboard",
+    };
+    return <Navigate to={dashboardRoutes[user.role] || "/dashboard"} replace />;
+  }
+
+  return children;
+}
+
+// App Router
+function AppRouter() {
+  const { user } = useAuth();
+
+  const getDefaultRoute = () => {
+    if (!user) return "/";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "parent": return "/parent";
+      default: return "/dashboard";
+    }
+  };
+
+  return (
+    <Routes>
+      {/* Public */}
+      <Route path="/" element={user ? <Navigate to={getDefaultRoute()} /> : <LandingPage />} />
+      <Route path="/login" element={user ? <Navigate to={getDefaultRoute()} /> : <LoginPage />} />
+      <Route path="/register" element={user ? <Navigate to={getDefaultRoute()} /> : <RegisterPage />} />
+
+      {/* Student */}
+      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
+      <Route path="/lessons" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonsPage /></ProtectedRoute>} />
+      <Route path="/lessons/:lessonId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonViewPage /></ProtectedRoute>} />
+      <Route path="/quizzes" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><QuizzesPage /></ProtectedRoute>} />
+      <Route path="/quizzes/:quizId" element={<ProtectedRoute allowedRoles={["student"]}><QuizPlayerPage /></ProtectedRoute>} />
+      <Route path="/games" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><GamesPage /></ProtectedRoute>} />
+      <Route path="/games/:gameId" element={<ProtectedRoute allowedRoles={["student"]}><GamePlayerPage /></ProtectedRoute>} />
+      <Route path="/leaderboard" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><LeaderboardPage /></ProtectedRoute>} />
+      <Route path="/achievements" element={<ProtectedRoute allowedRoles={["student"]}><AchievementsPage /></ProtectedRoute>} />
+
+      {/* Admin */}
+      <Route path="/admin/*" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
+
+      {/* Parent */}
+      <Route path="/parent" element={<ProtectedRoute allowedRoles={["parent"]}><ParentDashboard /></ProtectedRoute>} />
+
+      {/* Teacher */}
+      <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherDashboard /></ProtectedRoute>} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-center" richColors />
+        <AppRouter />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;
