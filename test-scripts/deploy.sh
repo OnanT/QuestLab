@@ -7,7 +7,7 @@ echo "=== Starting QuestLab deployment ==="
 
 # Check for .env file
 if [ -f .env ]; then
-    echo "Loading environment variables..."
+    echo "Loading environment variables🔐🔐🔐"
     export $(cat .env | grep -v '^#' | xargs)
 else
     echo "Error: .env file not found!"

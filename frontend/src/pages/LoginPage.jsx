@@ -129,7 +129,6 @@ export default function LoginPage() {
           <div className="mt-8 p-4 bg-slate-100 rounded-xl">
             <p className="text-sm text-slate-600 font-medium mb-2">Demo Accounts:</p>
             <div className="space-y-1 text-xs text-slate-500">
-              <p><span className="font-medium">Admin:</span> admin / admin123</p>
               <p><span className="font-medium">Teacher:</span> teacher / teacher123</p>
               <p><span className="font-medium">Parent:</span> parent / parent123</p>
               <p><span className="font-medium">Student:</span> student / student123</p>
@@ -142,7 +141,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-teal-500 to-teal-600 items-center justify-center p-12">
         <div className="max-w-lg text-center text-white">
           <img
-            src="https://images.unsplash.com/photo-1620679047904-e9f69e47c373?crop=entropy&cs=srgb&fm=jpg&q=85&w=500"
+            src="https://onan.shop/assets/images/gallery/questlab-landing.png"
             alt="Learning"
             className="rounded-3xl shadow-2xl mb-8 mx-auto"
           />

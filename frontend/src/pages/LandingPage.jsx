@@ -13,9 +13,11 @@ export default function LandingPage() {
         {/* Navigation */}
         <nav className="relative z-10 flex items-center justify-between px-6 py-4 md:px-12 lg:px-20">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl font-accent">Q</span>
-            </div>
+            <img
+              src="/questlab-logo.png"
+              alt="QuestLab Logo"
+              className="h-[38px] w-auto md:h-[44px] lg:h-[48px]"
+            />
             <span className="text-2xl font-bold font-heading text-slate-800">QuestLab</span>
           </div>
           <div className="flex items-center gap-4">

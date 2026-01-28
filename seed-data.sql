@@ -17,17 +17,6 @@ INSERT INTO users (username, email, hashed_password, role, avatar, points, level
 ('parent_smith', 'parent1@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'parent', 'parent1_avatar.png', 0, 'Explorer', 0),
 ('parent_jones', 'parent2@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'parent', 'parent2_avatar.png', 0, 'Explorer', 0),
 
--- Students (linked to parents)
-('alex_smith', 'alex@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'student', 'student1_avatar.png', 350, 'Adventurer', 7, 4),
-('emma_smith', 'emma@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'student', 'student2_avatar.png', 420, 'Scholar', 12, 4),
-('marcus_jones', 'marcus@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'student', 'student3_avatar.png', 280, 'Adventurer', 5, 5),
-('sophia_jones', 'sophia@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'student', 'student4_avatar.png', 510, 'Scholar', 15, 5),
-
--- More students without parents
-('james_brown', 'james@questlab.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5dWg7S4qBOK8a', 'student', 'student5_avatar.png', 195, 'Explorer', 3, NULL);
-
--- ==================== CURRICULUM DATA ====================
-
 -- School Years for Barbados
 INSERT INTO school_years (country_id, year_label) VALUES
 (1, 'Year 1'),

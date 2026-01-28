@@ -1,19 +1,1514 @@
-from fastapi import FastAPI
+# backend/main.py
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status, APIRouter, Body
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from core.config import settings
-from api.api_router import api_router
+from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, ForeignKey, TIMESTAMP, JSON
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, relationship
+from sqlalchemy.exc import IntegrityError
+from pydantic import BaseModel
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+import os
+from typing import List, Optional, Dict, Any
+from pathlib import Path
+import uuid
+import shutil
+from dotenv import load_dotenv
+import hashlib
+from typing import List
+
+
+# Load environment variables from .env file FIRST
+load_dotenv()
+ # ==================== UPLOADS CONFIGURATION ====================
+# For Docker, we use /app/uploads (inside container)
+UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
+
+# ==================== FASTAPI APP SETUP ====================
+app = FastAPI(title="Island Quest Lab API", version="1.0.0")
+
+# Mount static files for uploaded media
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+
+# ==================== CONFIGURATION ====================
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./islandquest.db")
+SECRET_KEY = os.getenv("SECRET_KEY", "your_super_secret_key_here_change_this_in_production")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+print(f"Database URL: {DATABASE_URL}")
+print(f"Using SQLite: {'sqlite' in DATABASE_URL}")
+
+# ==================== DATABASE SETUP ====================
+Base = declarative_base()  # MUST BE DEFINED BEFORE MODEL CLASSES!
+
+# Configure engine based on database type
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# ==================== DATABASE MODELS ====================
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    username = Column(String(150), unique=True, nullable=False)
+    email = Column(String(150), unique=True, nullable=False)
+    hashed_password = Column(String(150), nullable=False)
+    role = Column(String(50), nullable=False)
+    avatar = Column(String(150), default='default_avatar.png')
+    points = Column(Integer, default=0)
+    badges = Column(Text, default='')
+    level = Column(String(50), default='Explorer')
+    streak = Column(Integer, default=0)
+    parent_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_at = Column(TIMESTAMP, server_default='CURRENT_TIMESTAMP')
+    
+    # Relationships
+    children = relationship("User", backref="parent", remote_side=[id])
+    lessons_created = relationship("Lesson", back_populates="creator")
+    progress = relationship("Progress", back_populates="user")
+    media_uploaded = relationship("Media", back_populates="uploader")
+    rewards_created = relationship("Reward", foreign_keys="Reward.creator_id", back_populates="creator")
+    rewards_received = relationship("Reward", foreign_keys="Reward.for_user_id", back_populates="recipient")
+
+class Country(Base):
+    __tablename__ = "countries"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(150), nullable=False)
+    
+    # Relationships
+    curriculum_subjects = relationship("CurriculumSubject", back_populates="country")
+    school_years = relationship("SchoolYear", back_populates="country")
+
+class Subject(Base):
+    __tablename__ = "subjects"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(150), nullable=False)
+    
+    # Relationships
+    curriculum_subjects = relationship("CurriculumSubject", back_populates="subject")
+
+class CurriculumSubject(Base):
+    __tablename__ = "curriculum_subjects"
+    id = Column(Integer, primary_key=True)
+    country_id = Column(Integer, ForeignKey('countries.id'), nullable=True)
+    subject_id = Column(Integer, ForeignKey('subjects.id'), nullable=True)
+    grade_level = Column(Integer, nullable=False)
+    
+    # Relationships
+    country = relationship("Country", back_populates="curriculum_subjects")
+    subject = relationship("Subject", back_populates="curriculum_subjects")
+    topics = relationship("Topic", back_populates="curriculum_subject")
+
+class SchoolYear(Base):
+    __tablename__ = "school_years"
+    id = Column(Integer, primary_key=True)
+    country_id = Column(Integer, ForeignKey('countries.id'), nullable=True)
+    year_label = Column(String(150), nullable=False)
+    
+    # Relationships
+    country = relationship("Country", back_populates="school_years")
+    terms = relationship("Term", back_populates="school_year")
+
+class Term(Base):
+    __tablename__ = "terms"
+    id = Column(Integer, primary_key=True)
+    school_year_id = Column(Integer, ForeignKey('school_years.id'), nullable=True)
+    term_number = Column(Integer, nullable=False)
+    title = Column(String(150), nullable=False)
+    
+    # Relationships
+    school_year = relationship("SchoolYear", back_populates="terms")
+    topics = relationship("Topic", back_populates="term")
+
+class Topic(Base):
+    __tablename__ = "topics"
+    id = Column(Integer, primary_key=True)
+    curriculum_subject_id = Column(Integer, ForeignKey('curriculum_subjects.id'), nullable=True)
+    term_id = Column(Integer, ForeignKey('terms.id'), nullable=True)
+    title = Column(String(150), nullable=False)
+    
+    # Relationships
+    curriculum_subject = relationship("CurriculumSubject", back_populates="topics")
+    term = relationship("Term", back_populates="topics")
+    concepts = relationship("Concept", back_populates="topic")
+
+class Concept(Base):
+    __tablename__ = "concepts"
+    id = Column(Integer, primary_key=True)
+    topic_id = Column(Integer, ForeignKey('topics.id'), nullable=True)
+    title = Column(String(150), nullable=False)
+    
+    # Relationships
+    topic = relationship("Topic", back_populates="concepts")
+    lessons = relationship("Lesson", back_populates="concept")
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+    id = Column(Integer, primary_key=True)
+    concept_id = Column(Integer, ForeignKey('concepts.id'), nullable=True)
+    title = Column(String(150), nullable=False)
+    content_html = Column(Text, nullable=False)
+    creator_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_at = Column(TIMESTAMP, server_default='CURRENT_TIMESTAMP')
+    # New columns
+    category = Column(String(50), default='General')
+    difficulty = Column(String(20), default='beginner')
+    estimated_time = Column(Integer, default=30)
+    points = Column(Integer, default=50)
+    grade_levels = Column(Text, default='')
+    description = Column(Text, default='')
+    objectives = Column(Text, default='')
+    prerequisites = Column(Text, default='')
+    tags = Column(Text, default='')
+    
+    # Relationships
+    concept = relationship("Concept", back_populates="lessons")
+    creator = relationship("User", back_populates="lessons_created")
+    games = relationship("Game", back_populates="lesson")
+    media = relationship("Media", back_populates="lesson")
+    progress = relationship("Progress", back_populates="lesson")
+    quizzes = relationship("Quiz", back_populates="lesson")
+
+class GameEngine(Base):
+    __tablename__ = "game_engines"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(150), nullable=False)
+    
+    # Relationships
+    games = relationship("Game", back_populates="game_engine")
+
+class Game(Base):
+    __tablename__ = "games"
+    id = Column(Integer, primary_key=True)
+    lesson_id = Column(Integer, ForeignKey('lessons.id'), nullable=True)
+    game_engine_id = Column(Integer, ForeignKey('game_engines.id'), nullable=True)
+    config_json = Column(JSON, nullable=False)
+    created_at = Column(TIMESTAMP, server_default='CURRENT_TIMESTAMP')
+    
+    # Relationships
+    lesson = relationship("Lesson", back_populates="games")
+    game_engine = relationship("GameEngine", back_populates="games")
+    media = relationship("Media", back_populates="game")
+
+class Media(Base):
+    __tablename__ = "media"
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(150), nullable=False)
+    filetype = Column(String(50), nullable=False)
+    file_category = Column(String(20), default='other')  # New field
+    url = Column(String(255), nullable=False)
+    lesson_id = Column(Integer, ForeignKey('lessons.id'), nullable=True)
+    game_id = Column(Integer, ForeignKey('games.id'), nullable=True)
+    uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=True)
+    uploaded_at = Column(TIMESTAMP, server_default='CURRENT_TIMESTAMP')
+    
+    # Relationships
+    lesson = relationship("Lesson", back_populates="media")
+    game = relationship("Game", back_populates="media")
+    uploader = relationship("User", back_populates="media_uploaded")
+
+class Progress(Base):
+    __tablename__ = "progress"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    lesson_id = Column(Integer, ForeignKey('lessons.id'), nullable=True)
+    score = Column(Integer, nullable=True)
+    completed = Column(Boolean, default=False)
+    completed_at = Column(TIMESTAMP, nullable=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="progress")
+    lesson = relationship("Lesson", back_populates="progress")
+
+class Quiz(Base):
+    __tablename__ = "quizzes"
+    id = Column(Integer, primary_key=True)
+    lesson_id = Column(Integer, ForeignKey('lessons.id'), nullable=True)
+    question = Column(Text, nullable=False)
+    question_type = Column(String(20), default='mc_single')
+    options = Column(Text, nullable=False)
+    correct_answer = Column(String(150), nullable=False)
+    # New columns
+    explanation = Column(Text, default='')
+    points = Column(Integer, default=10)
+    difficulty = Column(String(20), default='beginner')
+    time_limit = Column(Integer, default=0)
+    image_url = Column(Text, default='')
+    audio_url = Column(Text, default='')
+    tags = Column(Text, default='')
+    
+    # Relationships
+    lesson = relationship("Lesson", back_populates="quizzes")
+
+class Reward(Base):
+    __tablename__ = "rewards"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(150), nullable=False)
+    points_required = Column(Integer, nullable=False)
+    creator_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    for_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    
+    # Relationships
+    creator = relationship("User", foreign_keys=[creator_id], back_populates="rewards_created")
+    recipient = relationship("User", foreign_keys=[for_user_id], back_populates="rewards_received")
+
+# ==================== FASTAPI APP SETUP ====================
 
 app = FastAPI(title="Island Quest Lab API", version="1.0.0")
 
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[FRONTEND_URL, "http://192.168.100.189:5173", "http://localhost:5173", "http://192.168.100.153:5173", "http://questlab.onan.shop", "http://200.50.85.80"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# Mount static files for uploaded media
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-app.include_router(api_router)
+# ==================== DEPENDENCIES ====================
+
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"],
+    default="argon2",
+    deprecated="auto"
+)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# ==================== PYDANTIC MODELS ====================
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str
+    parent_id: Optional[int] = None
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    avatar: Optional[str] = None
+    level: Optional[str] = None
+    streak: Optional[int] = None
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: str
+    role: str
+    avatar: str
+    points: int
+    level: str
+    streak: int
+    parent_id: Optional[int]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Enhanced Lesson Models
+class LessonCreate(BaseModel):
+    concept_id: Optional[int] = None
+    title: str
+    content_html: str
+    category: str = "General"
+    difficulty: str = "beginner"
+    estimated_time: int = 30
+    points: int = 50
+    grade_levels: List[str] = []
+    description: str = ""
+    objectives: str = ""
+    prerequisites: str = ""
+    tags: List[str] = []
+
+class LessonOut(BaseModel):
+    id: int
+    concept_id: Optional[int]
+    title: str
+    content_html: str
+    creator_id: Optional[int]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class LessonOutEnhanced(BaseModel):
+    id: int
+    concept_id: Optional[int]
+    title: str
+    content_html: str
+    creator_id: Optional[int]
+    created_at: datetime
+    category: str
+    difficulty: str
+    estimated_time: int
+    points: int
+    grade_levels: List[str]
+    description: str
+    objectives: str
+    prerequisites: str
+    tags: List[str]
+    subject_name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class GameCreate(BaseModel):
+    lesson_id: Optional[int] = None
+    game_engine_id: Optional[int] = None
+    config_json: dict
+
+class GameOut(BaseModel):
+    id: int
+    lesson_id: Optional[int]
+    game_engine_id: Optional[int]
+    config_json: dict
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class QuizCreate(BaseModel):
+    lesson_id: Optional[int] = None
+    question: str
+    question_type: str = "mc_single"
+    options: List[str]
+    correct_answer: str
+    explanation: str = ""
+    points: int = 10
+    difficulty: str = "beginner"
+    time_limit: int = 0
+    image_url: str = ""
+    audio_url: str = ""
+    tags: List[str] = []
+
+class QuizOut(BaseModel):
+    id: int
+    lesson_id: Optional[int]
+    question: str
+    question_type: str
+    options: List[str]
+    correct_answer: str
+    explanation: str
+    points: int
+    difficulty: str
+    time_limit: int
+    image_url: str
+    audio_url: str
+    tags: List[str]
+    
+    class Config:
+        from_attributes = True
+
+class ProgressCreate(BaseModel):
+    user_id: Optional[int] = None
+    lesson_id: Optional[int] = None
+    score: Optional[int] = None
+    completed: bool = False
+
+class ProgressOut(BaseModel):
+    id: int
+    user_id: Optional[int]
+    lesson_id: Optional[int]
+    score: Optional[int]
+    completed: bool
+    completed_at: Optional[datetime]
+    
+    class Config:
+        from_attributes = True
+
+class RewardCreate(BaseModel):
+    name: str
+    points_required: int
+    for_user_id: Optional[int] = None
+
+class RewardOut(BaseModel):
+    id: int
+    name: str
+    points_required: int
+    creator_id: Optional[int]
+    for_user_id: Optional[int]
+    
+    class Config:
+        from_attributes = True
+
+# Bulk quiz creation model
+class QuizBulkCreate(BaseModel):
+    lesson_id: int
+    questions: List[QuizCreate]
+
+# Enhanced subject model
+class SubjectOutEnhanced(BaseModel):
+    id: int
+    name: str
+    color: str
+    icon: str
+    
+    class Config:
+        from_attributes = True
+
+# Bulk quiz import
+class QuizBulkItem(BaseModel):
+    question: str
+    question_type: str = "mc_single"
+    options: List[str]
+    correct_answer: str
+    explanation: str = ""
+    points: int = 10
+    difficulty: str = "beginner"
+
+class QuizBulkCreate(BaseModel):
+    lesson_id: int
+    quizzes: List[QuizBulkItem]
+
+# ==================== AUTHENTICATION UTILITIES ====================
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if not current_user:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+# ==================== AUTH ENDPOINTS ====================
+
+@app.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    # Check if username exists
+    existing_user = db.query(User).filter(User.username == user.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email exists
+    existing_email = db.query(User).filter(User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate parent_id if provided
+    if user.parent_id:
+        parent = db.query(User).filter(User.id == user.parent_id).first()
+        if not parent:
+            raise HTTPException(status_code=400, detail="Parent not found")
+        if parent.role != 'parent':
+            raise HTTPException(status_code=400, detail="Parent ID does not belong to a parent user")
+    
+    # Create new user
+    hashed_password = get_password_hash(user.password)
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        role=user.role,
+        parent_id=user.parent_id
+    )
+    
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Database error")
+    
+    return db_user
+
+@app.post("/token", response_model=Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Try to find user by username first
+    user = db.query(User).filter(User.username == form_data.username).first()
+    
+    # If not found by username, try email
+    if not user:
+        user = db.query(User).filter(User.email == form_data.username).first()
+    
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# ==================== USER ENDPOINTS ====================
+
+@app.get("/users/me", response_model=UserOut)
+async def read_users_me(current_user: User = Depends(get_current_active_user)):
+    return current_user
+
+@app.get("/users/{user_id}", response_model=UserOut)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.put("/users/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check authorization
+    if current_user.id != user_id and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+    
+    # Update fields
+    update_data = user_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(user, field, value)
+    
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Update failed")
+    
+    return user
+
+# ==================== LESSON ENDPOINTS ====================
+@app.get("/lessons/create")
+def check_lesson_create_access(current_user: User = Depends(get_current_user)):
+    # Just check if user can create lessons
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create lessons")
+    return {"message": "Authorized to create lessons"}
+
+@app.get("/lessons", response_model=List[LessonOut])
+def get_lessons(
+    skip: int = 0,
+    limit: int = 100,
+    concept_id: Optional[int] = None,
+    creator_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Lesson)
+    
+    if concept_id:
+        query = query.filter(Lesson.concept_id == concept_id)
+    if creator_id:
+        query = query.filter(Lesson.creator_id == creator_id)
+    
+    lessons = query.offset(skip).limit(limit).all()
+    return lessons
+
+@app.get("/lessons/{lesson_id}", response_model=LessonOut)
+def get_lesson(lesson_id: int, db: Session = Depends(get_db)):
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    return lesson
+
+@app.get("/lessons/enhanced/{lesson_id}", response_model=LessonOutEnhanced)
+def get_lesson_enhanced(lesson_id: int, db: Session = Depends(get_db)):
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Convert to enhanced format
+    lesson_dict = {c.name: getattr(lesson, c.name) for c in lesson.__table__.columns}
+    
+    # Parse string fields back to lists
+    if lesson_dict.get('grade_levels'):
+        lesson_dict['grade_levels'] = lesson_dict['grade_levels'].split(',') if lesson_dict['grade_levels'] else []
+    else:
+        lesson_dict['grade_levels'] = []
+    
+    if lesson_dict.get('tags'):
+        lesson_dict['tags'] = lesson_dict['tags'].split(',') if lesson_dict['tags'] else []
+    else:
+        lesson_dict['tags'] = []
+    
+    # Add subject_name (using category)
+    lesson_dict['subject_name'] = lesson.category
+    
+    return lesson_dict
+
+@app.post("/lessons", response_model=LessonOutEnhanced, status_code=status.HTTP_201_CREATED)
+def create_lesson(
+    lesson: LessonCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create lessons")
+    
+    # Convert lists to strings
+    lesson_dict = lesson.dict()
+    lesson_dict['grade_levels'] = ','.join(lesson_dict['grade_levels']) if lesson_dict['grade_levels'] else ''
+    lesson_dict['tags'] = ','.join(lesson_dict['tags']) if lesson_dict['tags'] else ''
+    
+    db_lesson = Lesson(**lesson_dict, creator_id=current_user.id)
+    
+    try:
+        db.add(db_lesson)
+        db.commit()
+        db.refresh(db_lesson)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create lesson")
+    
+    # Convert back for response
+    lesson_out = {c.name: getattr(db_lesson, c.name) for c in db_lesson.__table__.columns}
+    lesson_out['grade_levels'] = lesson.grade_levels
+    lesson_out['tags'] = lesson.tags
+    lesson_out['subject_name'] = lesson.category
+    
+    return lesson_out
+
+@app.put("/lessons/{lesson_id}", response_model=LessonOutEnhanced)
+def update_lesson(
+    lesson_id: int,
+    lesson_update: LessonCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Check authorization
+    if lesson.creator_id != current_user.id and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to update this lesson")
+    
+    update_data = lesson_update.dict(exclude_unset=True)
+    
+    # Handle grade_levels conversion
+    if 'grade_levels' in update_data and update_data['grade_levels']:
+        update_data['grade_levels'] = ','.join(update_data['grade_levels'])
+    
+    for field, value in update_data.items():
+        setattr(lesson, field, value)
+    
+    try:
+        db.commit()
+        db.refresh(lesson)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to update lesson")
+    
+    # Convert back for response
+    lesson_out = {c.name: getattr(lesson, c.name) for c in lesson.__table__.columns}
+    lesson_out['grade_levels'] = lesson_update.grade_levels
+    lesson_out['subject_name'] = lesson.category
+    
+    return lesson_out
+
+@app.delete("/lessons/{lesson_id}")
+def delete_lesson(
+    lesson_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Check authorization
+    if lesson.creator_id != current_user.id and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized to delete this lesson")
+    
+    try:
+        db.delete(lesson)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to delete lesson")
+    
+    return {"message": "Lesson deleted successfully"}
+
+# ==================== GAME ENDPOINTS ====================
+@app.get("/games/list")
+def get_games_list(
+    limit: Optional[int] = None,
+    skip: int = 0,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Game)
+    
+    if limit:
+        query = query.limit(limit)
+    
+    games = query.offset(skip).all()
+    
+    # Convert to frontend format
+    game_list = []
+    for game in games:
+        game_list.append({
+            "id": game.id,
+            "title": f"Game {game.id}",
+            "game_engine_id": game.game_engine_id or 1,
+            "points": 10,
+            "difficulty": "medium",
+            "config_json": game.config_json
+        })
+    
+    return game_list
+
+@app.get("/games")
+def get_games_with_stats(
+    limit: Optional[int] = None,
+    skip: int = 0,
+    lesson_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Game)
+    
+    if lesson_id:
+        query = query.filter(Game.lesson_id == lesson_id)
+    
+    if limit:
+        query = query.limit(limit)
+    
+    games = query.offset(skip).all()
+    
+    # Convert to frontend format
+    game_list = []
+    for game in games:
+        game_list.append({
+            "id": game.id,
+            "title": f"Game {game.id}",  # Add title if not in model
+            "game_engine_id": game.game_engine_id or 1,
+            "points": 10,  # Default points
+            "difficulty": "medium",  # Default difficulty
+            "config_json": game.config_json
+        })
+    
+    return game_list
+
+@app.get("/games/{game_id}", response_model=GameOut)
+def get_game(game_id: int, db: Session = Depends(get_db)):
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return game
+
+@app.post("/games", response_model=GameOut, status_code=status.HTTP_201_CREATED)
+def create_game(
+    game: GameCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create games")
+    
+    db_game = Game(**game.dict())
+    
+    try:
+        db.add(db_game)
+        db.commit()
+        db.refresh(db_game)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create game")
+    
+    return db_game
+
+# ==================== QUIZ ENDPOINTS ====================
+
+@app.get("/quizzes", response_model=List[QuizOut])
+def get_quizzes(
+    skip: int = 0,
+    limit: int = 100,
+    lesson_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Quiz)
+    
+    if lesson_id:
+        query = query.filter(Quiz.lesson_id == lesson_id)
+    
+    quizzes = query.offset(skip).limit(limit).all()
+    
+    # Convert options string to list
+    result = []
+    for quiz in quizzes:
+        quiz_dict = {c.name: getattr(quiz, c.name) for c in quiz.__table__.columns}
+        quiz_dict['options'] = quiz.options.split(',') if quiz.options else []
+        quiz_dict['tags'] = quiz.tags.split(',') if quiz.tags else []
+        result.append(quiz_dict)
+    
+    return result
+
+@app.post("/quizzes", response_model=QuizOut, status_code=status.HTTP_201_CREATED)
+def create_quiz(
+    quiz: QuizCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create quizzes")
+    
+    # Convert lists to strings
+    quiz_dict = quiz.dict()
+    quiz_dict['options'] = ','.join(quiz_dict['options'])
+    quiz_dict['tags'] = ','.join(quiz_dict['tags']) if quiz_dict['tags'] else ''
+    
+    db_quiz = Quiz(**quiz_dict)
+    
+    try:
+        db.add(db_quiz)
+        db.commit()
+        db.refresh(db_quiz)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create quiz")
+    
+    # Convert back to list for response
+    quiz_out = {c.name: getattr(db_quiz, c.name) for c in db_quiz.__table__.columns}
+    quiz_out['options'] = quiz.options
+    quiz_out['tags'] = quiz.tags
+    
+    return quiz_out
+
+@app.post("/quizzes/bulk", status_code=status.HTTP_201_CREATED)
+def create_quizzes_bulk(
+    quiz_bulk: QuizBulkCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create quizzes")
+    
+    created_quizzes = []
+    
+    for quiz_data in quiz_bulk.questions:
+        # Convert options list to string
+        quiz_dict = quiz_data.dict()
+        quiz_dict['options'] = ','.join(quiz_dict['options'])
+        quiz_dict['lesson_id'] = quiz_bulk.lesson_id
+        
+        db_quiz = Quiz(**quiz_dict)
+        
+        try:
+            db.add(db_quiz)
+            db.commit()
+            db.refresh(db_quiz)
+            
+            # Convert back to list for response
+            quiz_out = {c.name: getattr(db_quiz, c.name) for c in db_quiz.__table__.columns}
+            quiz_out['options'] = quiz_data.options
+            created_quizzes.append(quiz_out)
+            
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=f"Failed to create quiz: {quiz_data.question}")
+    
+    return {"message": f"Created {len(created_quizzes)} quizzes", "quizzes": created_quizzes}
+
+@app.get("/quizzes/{quiz_id}", response_model=QuizOut)
+def get_quiz(quiz_id: int, db: Session = Depends(get_db)):
+    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    quiz_dict = {c.name: getattr(quiz, c.name) for c in quiz.__table__.columns}
+    quiz_dict['options'] = quiz.options.split(',') if quiz.options else []
+    
+    return quiz_dict
+
+@app.post("/quizzes/bulk", status_code=status.HTTP_201_CREATED)
+def create_quizzes_bulk(
+    bulk: QuizBulkCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create quizzes")
+    
+    created_quizzes = []
+    
+    for quiz_data in bulk.quizzes:
+        # Convert lists to strings
+        quiz_dict = quiz_data.dict()
+        quiz_dict['lesson_id'] = bulk.lesson_id
+        quiz_dict['options'] = ','.join(quiz_dict['options'])
+        
+        db_quiz = Quiz(**quiz_dict)
+        
+        try:
+            db.add(db_quiz)
+            db.commit()
+            db.refresh(db_quiz)
+            
+            # Convert back to list for response
+            quiz_out = {c.name: getattr(db_quiz, c.name) for c in db_quiz.__table__.columns}
+            quiz_out['options'] = quiz_data.options
+            created_quizzes.append(quiz_out)
+            
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=f"Failed to create quiz: {quiz_data.question}")
+    
+    return {
+        "message": f"Created {len(created_quizzes)} quizzes",
+        "count": len(created_quizzes),
+        "quizzes": created_quizzes
+    }
+
+# Template endpoints
+class TemplateCreate(BaseModel):
+    name: str
+    description: str = ""
+    lesson_data: dict
+    questions: List[dict]
+    tags: List[str] = []
+    is_public: bool = False
+
+@app.post("/templates", status_code=status.HTTP_201_CREATED)
+def create_template(
+    template: TemplateCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create templates")
+    
+    # In a real app, you'd have a templates table
+    # For now, we'll store it in a JSON file or separate table
+    
+    return {
+        "message": "Template created",
+        "template_id": 1,  # Replace with actual ID
+        "share_url": f"/templates/1"
+    }
+
+# ==================== PROGRESS ENDPOINTS ====================
+
+@app.post("/progress", response_model=ProgressOut, status_code=status.HTTP_201_CREATED)
+def create_progress(
+    progress: ProgressCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Students can only create their own progress
+    if current_user.role == 'student' and progress.user_id and progress.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Students can only create their own progress")
+    
+    # Parents can create progress for their children
+    if current_user.role == 'parent' and progress.user_id:
+        student = db.query(User).filter(
+            User.id == progress.user_id,
+            User.parent_id == current_user.id
+        ).first()
+        if not student:
+            raise HTTPException(status_code=403, detail="Can only create progress for your students")
+    
+    # Set user_id to current user if not specified
+    if not progress.user_id:
+        progress.user_id = current_user.id
+    
+    db_progress = Progress(**progress.dict())
+    
+    if db_progress.completed:
+        db_progress.completed_at = datetime.utcnow()
+    
+    try:
+        db.add(db_progress)
+        db.commit()
+        db.refresh(db_progress)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create progress")
+    
+    return db_progress
+
+@app.get("/progress/user/{user_id}", response_model=List[ProgressOut])
+def get_user_progress(
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check authorization
+    if current_user.id != user_id and current_user.role not in ['parent', 'admin', 'teacher']:  # Add teacher
+        raise HTTPException(status_code=403, detail="Not authorized to view this user's progress")
+    
+    # If parent or teacher, check if they have access to this student
+    if current_user.role in ['parent', 'teacher'] and current_user.id != user_id:
+        student = None
+        if current_user.role == 'parent':
+            student = db.query(User).filter(
+                User.id == user_id,
+                User.parent_id == current_user.id
+            ).first()
+        elif current_user.role == 'teacher':
+            # Teachers can view all student progress
+            student = db.query(User).filter(
+                User.id == user_id,
+                User.role == 'student'
+            ).first()
+        
+        if not student:
+            raise HTTPException(status_code=403, detail="Not authorized to view this user's progress")
+    
+    progress_list = db.query(Progress).filter(Progress.user_id == user_id).offset(skip).limit(limit).all()
+    return progress_list
+
+@app.get("/progress/lesson/{lesson_id}")
+def get_lesson_progress(
+    lesson_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    progress = db.query(Progress).filter(
+        Progress.lesson_id == lesson_id,
+        Progress.user_id == current_user.id
+    ).first()
+    
+    if not progress:
+        return {"completed": False, "score": 0}
+    
+    return {
+        "completed": progress.completed,
+        "score": progress.score,
+        "completed_at": progress.completed_at
+    }
+
+@app.post("/progress/lesson/{lesson_id}/complete")
+def complete_lesson(
+    lesson_id: int,
+    score: int = Body(100, embed=True),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if lesson exists
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Check if progress already exists
+    existing_progress = db.query(Progress).filter(
+        Progress.lesson_id == lesson_id,
+        Progress.user_id == current_user.id
+    ).first()
+    
+    if existing_progress:
+        # Update existing progress
+        existing_progress.completed = True
+        existing_progress.score = score
+        existing_progress.completed_at = datetime.utcnow()
+    else:
+        # Create new progress
+        new_progress = Progress(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            score=score,
+            completed=True,
+            completed_at=datetime.utcnow()
+        )
+        db.add(new_progress)
+    
+    # Award points to user
+    current_user.points = (current_user.points or 0) + lesson.points
+    
+    try:
+        db.commit()
+        
+        # Re-fetch user to get updated points
+        db.refresh(current_user)
+        
+        return {
+            "message": "Lesson completed successfully",
+            "points_awarded": lesson.points,
+            "total_points": current_user.points,
+            "score": score
+        }
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to save progress")
+# ==================== LEADERBOARD ENDPOINT ====================
+@app.get("/leaderboard")
+def get_leaderboard(
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).order_by(User.points.desc()).limit(limit).all()
+    
+    leaderboard = []
+    for i, user in enumerate(users):
+        leaderboard.append({
+            "rank": i + 1,
+            "user_id": user.id,
+            "username": user.username,
+            "points": user.points or 0,
+            "level": user.level or "Explorer",
+            "avatar": user.avatar or "default_avatar.png",
+            "role": user.role
+        })
+    
+    return {"leaderboard": leaderboard}
+
+
+# ==================== MEDIA UPLOAD ENDPOINTS ====================
+
+@app.post("/upload-media")
+async def upload_media(
+    file: UploadFile = File(...),
+    lesson_id: Optional[int] = None,
+    game_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to upload media")
+    
+    # Validate file type
+    allowed_types = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'audio/mpeg', 'audio/wav', 'audio/ogg',
+        'application/pdf', 'video/mp4'
+    ]
+    
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"File type {file.content_type} not allowed")
+    
+    # Create uploads directory if it doesn't exist
+    UPLOAD_DIR = Path("frontend/uploads")
+    UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
+    
+    # Generate unique filename
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    file_ext = Path(file.filename).suffix
+    unique_filename = f"{timestamp}_{current_user.id}_{uuid.uuid4().hex[:8]}{file_ext}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    # Save file
+    try:
+        with file_path.open("wb") as buffer:
+            # Read in chunks to handle large files
+            while chunk := await file.read(8192):
+                buffer.write(chunk)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    # Determine file type category
+    file_category = 'other'
+    if file.content_type.startswith('image/'):
+        file_category = 'image'
+    elif file.content_type.startswith('audio/'):
+        file_category = 'audio'
+    elif file.content_type.startswith('video/'):
+        file_category = 'video'
+    elif file.content_type == 'application/pdf':
+        file_category = 'document'
+    
+    # Create media record
+    media = Media(
+        filename=unique_filename,
+        filetype=file.content_type,
+        url=f"/uploads/{unique_filename}",  # Frontend-accessible URL
+        file_category=file_category,
+        lesson_id=lesson_id,
+        game_id=game_id,
+        uploaded_by=current_user.id
+    )
+    
+    try:
+        db.add(media)
+        db.commit()
+        db.refresh(media)
+    except IntegrityError:
+        db.rollback()
+        file_path.unlink(missing_ok=True)  # Delete the uploaded file
+        raise HTTPException(status_code=400, detail="Failed to save media record")
+    
+    return {
+        "message": "File uploaded successfully",
+        "media_id": media.id,
+        "filename": media.filename,
+        "url": f"/uploads/{unique_filename}",
+        "full_url": f"http://localhost:5173/uploads/{unique_filename}",
+        "filetype": media.filetype,
+        "category": file_category
+    }
+
+@app.get("/media/{lesson_id}", response_model=List[dict])
+def get_lesson_media(lesson_id: int, db: Session = Depends(get_db)):
+    media_list = db.query(Media).filter(Media.lesson_id == lesson_id).all()
+    return [
+        {
+            "id": media.id,
+            "filename": media.filename,
+            "filetype": media.filetype,
+            "url": media.url,
+            "uploaded_at": media.uploaded_at
+        }
+        for media in media_list
+    ]
+
+# ==================== PARENT-CHILD ENDPOINTS ====================
+
+@app.get("/my-students", response_model=List[UserOut])
+def get_my_students(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['parent', 'teacher']:  # Allow teachers too
+        raise HTTPException(status_code=403, detail="Only parents and teachers can view their students")
+    
+    if current_user.role == 'parent':
+        students = db.query(User).filter(User.parent_id == current_user.id).all()
+    else:  # teacher
+        # For teachers, you might want a different logic - maybe all students?
+        # Or students assigned to this teacher. Let's return all students for now
+        students = db.query(User).filter(User.role == 'student').all()
+    
+    return students
+
+@app.post("/register-student", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register_student(
+    student: UserCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role != 'parent':
+        raise HTTPException(status_code=403, detail="Only parents can register students")
+    
+    # Check if username exists
+    existing_user = db.query(User).filter(User.username == student.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email exists
+    existing_email = db.query(User).filter(User.email == student.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create student with parent relationship
+    hashed_password = get_password_hash(student.password)
+    db_student = User(
+        username=student.username,
+        email=student.email,
+        hashed_password=hashed_password,
+        role='student',
+        parent_id=current_user.id
+    )
+    
+    try:
+        db.add(db_student)
+        db.commit()
+        db.refresh(db_student)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to register student")
+    
+    return db_student
+
+# ==================== REWARD ENDPOINTS ====================
+
+@app.post("/rewards", response_model=RewardOut, status_code=status.HTTP_201_CREATED)
+def create_reward(
+    reward: RewardCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['parent', 'admin']:
+        raise HTTPException(status_code=403, detail="Not authorized to create rewards")
+    
+    # Check if parent is creating reward for their own student
+    if reward.for_user_id and current_user.role == 'parent':
+        student = db.query(User).filter(
+            User.id == reward.for_user_id,
+            User.parent_id == current_user.id
+        ).first()
+        if not student:
+            raise HTTPException(status_code=403, detail="Can only create rewards for your students")
+    
+    db_reward = Reward(**reward.dict(), creator_id=current_user.id)
+    
+    try:
+        db.add(db_reward)
+        db.commit()
+        db.refresh(db_reward)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create reward")
+    
+    return db_reward
+
+# ==================== PARENT DASHBOARD ENDPOINTS ====================
+@app.get("/parent/dashboard")
+async def temp_parent_dashboard():
+    return {"message": "Parent dashboard - implement properly"}
+
+# ==================== SUBJECT ENDPOINTS ====================
+class SubjectOut(BaseModel):
+    id: int
+    name: str
+    
+    class Config:
+        from_attributes = True  # Changed from orm_mode to from_attributes for Pydantic v2
+
+@app.get("/subjects", response_model=List[SubjectOut])
+def get_subjects(db: Session = Depends(get_db)):
+    subjects = db.query(Subject).all()  # Changed from models.Subject to Subject
+    return subjects
+
+@app.get("/subjects/enhanced", response_model=List[SubjectOutEnhanced])
+def get_subjects_enhanced(db: Session = Depends(get_db)):
+    # Map subjects to colors and icons
+    subject_mapping = {
+        "Math": {"color": "#3B82F6", "icon": "calculator"},
+        "Science": {"color": "#10B981", "icon": "flask"},
+        "History": {"color": "#F59E0B", "icon": "landmark"},
+        "Language": {"color": "#8B5CF6", "icon": "book-open"},
+        "Art": {"color": "#EC4899", "icon": "palette"},
+        "Technology": {"color": "#06B6D4", "icon": "cpu"}
+    }
+    
+    subjects = db.query(Subject).all()
+    enhanced_subjects = []
+    
+    for subject in subjects:
+        mapping = subject_mapping.get(subject.name, {"color": "#6B7280", "icon": "book"})
+        enhanced_subjects.append({
+            "id": subject.id,
+            "name": subject.name,
+            "color": mapping["color"],
+            "icon": mapping["icon"]
+        })
+    
+    return enhanced_subjects
+
+# ==================== HEALTH AND UTILITY ENDPOINTS ====================
+@app.get("/user/stats/me")
+def get_my_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    progress_records = db.query(Progress).filter(Progress.user_id == current_user.id).all()
+    completed = [p for p in progress_records if p.completed]
+    
+    return {
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "total_points": current_user.points or 0,
+        "level": current_user.level or "Explorer",
+        "streak": current_user.streak or 0,
+        "completed_lessons": len(completed),
+        "total_lessons_attempted": len(progress_records),
+        "average_score": sum([p.score or 0 for p in completed]) / len(completed) if completed else 0
+    }
+
+@app.get("/", tags=["Health"])
+def read_root():
+    return {"message": "Island Quest Lab API", "status": "running", "version": "1.0.0"}
+
+@app.get("/health", tags=["Health"])
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute("SELECT 1")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
+
+@app.get("/user/{user_id}/stats")
+def get_user_stats(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    progress_records = db.query(Progress).filter(Progress.user_id == user_id).all()
+    completed = [p for p in progress_records if p.completed]
+    
+    return {
+        "user_id": user_id,
+        "username": user.username,
+        "total_points": user.points,
+        "level": user.level,
+        "streak": user.streak,
+        "completed_lessons": len(completed),
+        "total_lessons_attempted": len(progress_records),
+        "average_score": sum([p.score or 0 for p in completed]) / len(completed) if completed else 0
+    }
+
+# ==================== STARTUP EVENT ====================
+
+@app.on_event("startup")
+async def startup_event():
+    # Create tables
+    try:
+        Base.metadata.create_all(bind=engine)
+        print(" Database tables created successfully!")
+    except Exception as e:
+        print(f" Failed to create database tables: {e}")
+        # Try to continue without tables for now
+        pass
+    
+    # Create uploads directory if it doesn't exist
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    print(" Uploads directory ready!")

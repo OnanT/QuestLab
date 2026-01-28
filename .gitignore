@@ -1,0 +1,5 @@
+# Certbot SSL certificates and keys
+certbot/conf/**
+!certbot/conf/renewal/
+certbot/conf/renewal/*.conf
+letsencrypt/

@@ -1,0 +1,173 @@
+# 🔥🔥🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🔥🔥
+#  💡BlackWolf Questlab Aliases & Functions
+# 🔥🔥🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🔥🔥
+#           Author: Onan Thomas
+# Last Updated: $(date +%Y-%m-%d)
+# 🔥🔥🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🔥🔥
+# To use: Add this to your ~/.bashrc
+# if [ -f ~/.blackwolf_aliases ]; then
+#     . ~/.blackwolf_aliases
+# fi
+# 🔥🔥🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🐾🔥🔥
+
+# ----- Color Configuration 🐾🔥🔥
+
+export GREP_COLORS='mt=01;38;5;82:sl=:cx=:fn=35:ln=32:bn=32:se=36'
+export GREP_COLOR='01;38;5;82'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# ----- Navigation Shortcuts 🐾🔥🔥
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias ~='cd ~'
+alias c='clear'
+alias h='history'
+alias reload='source ~/.bashrc'
+alias reloadz='source ~/.zshrc'
+
+# ---- crAPI
+alias crapi='cd ./lab/crAPI && sudo docker-compose -f deploy/docker/docker-compose.yml up -d'
+alias runcrapi='sudo docker-compose -f deploy/docker/docker-compose.yml up -d'
+
+#-----Grey Wolf shortcuts
+alias gwpy="source greywolf/bin/activate"
+alias gw="cd $HOME/greywolf && source .venv/bin/activate"
+alias gowolf="python greywolf.py"
+alias killpy="deactivate"
+
+
+# Questlab Directory Shortcuts
+
+alias q="cd $HOME/blackwolf"
+alias qtools="cd $HOME/blackwolf/tools"
+alias qwordlists="cd $HOME/blackwolf/wordlists"
+alias qscans="cd $HOME/blackwolf/scans"
+alias qnotes="cd $HOME/blackwolf/notes"
+alias qreports="cd $HOME/blackwolf/reports"
+alias qtargets="cd $HOME/blackwolf/targets"
+
+# ----- File Operations 🐾🔥🔥
+alias ll='ls -lah'
+alias la='ls -A'
+alias l='ls -CF'
+alias lt='ls -lth'
+
+# Safety nets
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# ----- Git Shortcuts 🐾🔥🔥
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+alias gd='git diff'
+alias gpull='git pull'
+
+# Questlab Git shortcuts
+alias gsave='git add . && git commit -m "Progress save - $(date +%Y-%m-%d)" && git push'
+alias gnotes='git add notes/ && git commit -m "Updated notes - $(date +%Y-%m-%d)" && git push'
+alias gbackup='git add . && git commit -m "Backup - $(date +%Y-%m-%d\ %H:%M:%S)" && git push'
+
+# ----- 🖥️ WOLFPACK TMUX -----
+alias questlab='tmux new -s "💡 Questlab" -A'
+alias tma='tmux attach -t'
+alias tml='tmux list-sessions | grep -E "💡"'
+alias tmk='tmux kill-session -t'
+alias wolf-reload='tmux source ~/.tmux.conf && echo "💡 Pack refreshed"'
+
+# Quick tmux session for Questlab# ----- Color Configuration -----
+# Grep colors: bold, underline, blink, cyan
+export GREP_COLOR='01;04;05;36'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias qsession='tmux new-session -s bugbounty -d && tmux split-window -h && tmux split-window -v && tmux attach -t bugbounty'
+
+# ----- Quick Notes System -----
+# ----- Docker Shortcuts -----
+# Basic Docker commands
+alias d='sudo docker'
+alias dc='sudo docker-compose'
+alias dps='sudo docker ps'
+alias dpsa='sudo docker ps -a'
+alias di='sudo docker images'
+alias dex='sudo docker exec -it'
+alias dlog='sudo docker logs -f'
+alias dstop='sudo docker stop'
+alias drm='sudo docker rm'
+alias drmi='sudo docker rmi'
+
+# Docker cleanup aliases
+alias dclean='sudo docker system prune -af --volumes'
+alias dclean-containers='sudo docker rm $(sudo docker ps -aq)'
+alias dclean-images='sudo docker rmi $(sudo docker images -q)'
+alias dclean-volumes='sudo docker volume rm $(sudo docker volume ls -q)'
+alias dclean-networks='sudo docker network rm $(sudo docker network ls -q)'
+
+# Docker info
+alias dspace='sudo docker system df'
+alias dinspect='sudo docker inspect'
+
+# Docker Compose shortcuts
+alias dcup='sudo docker-compose up -d'
+alias dcdown='sudo docker-compose down'
+alias dcrestart='sudo docker-compose restart'
+alias dclogs='sudo docker-compose logs -f'
+alias dcps='sudo docker-compose ps'
+alias dcbuild='sudo docker-compose build'
+alias dcpull='sudo docker-compose pull'
+
+# ----- Python Virtual Environment Shortcuts -----
+alias pa="source .venv/bin/activate"
+alias pd="deactivate"
+alias createReq="pip freeze > requirements.txt"
+# ----- Database Management Shortcuts -----
+alias pg="sudo -u postgres psql"
+alias pgstart="sudo systemctl start postgresql"
+alias pgstop="sudo systemctl stop postgresql"
+alias pgstatus="sudo systemctl status postgresql"
+alias pgrestart="sudo systemctl restart postgresql"
+# Redis management shortcuts
+alias redisstart="sudo systemctl start redis-server"
+alias redisstop="sudo systemctl stop redis-server"
+alias redisstatus="sudo systemctl status redis-server"
+alias hiredis="redis-cli ping && redis-cli info server && ps aux | grep redis && redis-cli KEYS '*' && redis-cli LLEN celery"
+alias reloadredis="redis-server --daemonize yes" # If not running, start it manually
+# Celery management shortcuts
+alias hicelery="celery -A celery_app:app status && celery -A celery_app:app inspect active && celery -A celery_app:app inspect registered && ps aux | grep celery"
+alias startcelery="celery -A celery_app:app worker --loglevel=info --concurrency=4"
+alias checkcelery="celery -A celery_app:app status && celery -A celery_app:app inspect active"
+alias purgecelery="celery -A celery_app:app purge -f"
+alias reloadcelery="celery -A celery_app:app worker --loglevel=debug --concurrency=2"
+alias logcelery="celery -A celery_app.app worker --loglevel=info"
+alias qcelery="source ~/.venvs/blackwolf/bin/activate && celery -A celery_worker.celery_app worker --loglevel=info"
+
+
+
+
+
+# Network shortcuts
+alias myip='curl -s ifconfig.me'
+alias myports='sudo netstat -tulanp | grep LISTEN'
+alias diskspace='df -h'
+alias meminfo='free -h'
+
+# 1. Ultra-fast category help (type 2–3 letters only)
+alias hrecon='echo "subdomain-enum → check-live → quick-scan → full-recon | certprobe | am | crtsh"'
+alias htarget='echo "newtarget → target → targets → deltarget"'
+alias hnote='echo "qnote → qshow → qsearch → qedit"'
+alias hgit='echo "gsave → gnotes → gbackup → alias-backup"'
+alias htmux='echo "wolfpack | blackwolf-session | howl-session | qsession | tml"'
+alias hdocker='echo "dcup → dcdown → dex → dlog → dclean → dshell"'
+
+alias hg='qhelp git'       # git shortcuts
+
+
+# Postgres shortcuts
+alias pg='sudo -u postgres psql'
