@@ -1,147 +1,76 @@
-# backend/routers/admin.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from typing import List, Optional
-from models import User, Assignment, School, Island, Subject
-from schemas import (
-    UserOut, AssignmentCreate, AssignmentOut, 
-    SchoolCreate, SchoolOut, IslandOut, SubjectCreate, SubjectOut
-)
-from dependencies import get_db, get_current_user
+from typing import List
+import models, schemas
+from dependencies import get_db, get_current_user, get_current_active_user_with_role
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+router = APIRouter(prefix="/admin/users", tags=["admin-users"])
+# ---------- LIST USERS ----------
+@router.get("/", response_model=List[schemas.UserOut])
+@router.get("", response_model=List[schemas.UserOut])
+def list_users(role: str | None = None,
+               db: Session = Depends(get_db),
+               current_user: models.User = Depends(get_current_active_user_with_role(['admin']))):
+    query = db.query(models.User)
+    if role:
+        query = query.filter(models.User.role == role)
+    return query.all()
 
-def require_admin(current_user: User = Depends(get_current_user)):
-    """Dependency to require admin role"""
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
+@router.get("/parent/dashboard")
+async def temp_parent_dashboard():
+    return {"message": "Parent dashboard - implement properly"}
 
-# Users Management
-@router.get("/users", response_model=List[UserOut])
-def get_all_users(
-    role: Optional[str] = Query(None),
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+
+@router.post("/templates", status_code=201)
+def create_template(
+    template: schemas.TemplateCreate,
+    current_user: models.User = Depends(get_current_active_user_with_role(['admin', 'teacher'])),
+    db: Session = Depends(get_db)
 ):
-    """Get all users (admin only)"""
-    query = db.query(User)
-    
-    if role and role != "all":
-        query = query.filter(User.role == role)
-    
-    users = query.offset(skip).limit(limit).all()
-    return users
-
-@router.delete("/users/{user_id}")
-def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
-):
-    """Delete a user (admin only)"""
-    user = db.query(User).filter(User.id == user_id).first()
+# ---------- GET SINGLE USER ----------
+@router.get("/{user_id}", response_model=schemas.UserOut)
+def get_user(user_id: int,
+             db: Session = Depends(get_db),
+             current_user: models.User = Depends(get_current_active_user_with_role(['admin']))):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Don't allow deleting yourself
-    if user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot delete yourself")
-    
-    try:
-        db.delete(user)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Failed to delete user")
-    
-    return {"message": "User deleted successfully"}
+    return user
 
-# Assignments Management
-@router.get("/assignments", response_model=List[dict])
-def get_assignments(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
-):
-    """Get all student assignments"""
-    assignments = db.query(Assignment).offset(skip).limit(limit).all()
-    
-    result = []
-    for a in assignments:
-        student = db.query(User).filter(User.id == a.student_id).first()
-        parent = db.query(User).filter(User.id == a.parent_id).first() if a.parent_id else None
-        teacher = db.query(User).filter(User.id == a.teacher_id).first() if a.teacher_id else None
-        
-        result.append({
-            "id": a.id,
-            "student_id": a.student_id,
-            "student_name": student.username if student else "Unknown",
-            "parent_id": a.parent_id,
-            "parent_name": parent.username if parent else None,
-            "teacher_id": a.teacher_id,
-            "teacher_name": teacher.username if teacher else None,
-            "created_at": a.created_at
-        })
-    
-    return result
 
-@router.post("/assignments", response_model=AssignmentOut, status_code=201)
-def create_assignment(
-    assignment: AssignmentCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
-):
-    """Create a student assignment"""
-    # Verify student exists
-    student = db.query(User).filter(User.id == assignment.student_id).first()
-    if not student or student.role != 'student':
-        raise HTTPException(status_code=400, detail="Invalid student ID")
-    
-    # Verify parent if provided
-    if assignment.parent_id:
-        parent = db.query(User).filter(User.id == assignment.parent_id).first()
-        if not parent or parent.role != 'parent':
-            raise HTTPException(status_code=400, detail="Invalid parent ID")
-    
-    # Verify teacher if provided
-    if assignment.teacher_id:
-        teacher = db.query(User).filter(User.id == assignment.teacher_id).first()
-        if not teacher or teacher.role != 'teacher':
-            raise HTTPException(status_code=400, detail="Invalid teacher ID")
-    
-    db_assignment = Assignment(**assignment.dict())
-    
-    try:
-        db.add(db_assignment)
-        db.commit()
-        db.refresh(db_assignment)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Failed to create assignment")
-    
-    return db_assignment
+# ---------- UPDATE USER ----------
+@router.put("/{user_id}", response_model=schemas.UserOut)
+def update_user(user_id: int,
+                payload: schemas.UserUpdate,
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_active_user_with_role(['admin']))):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    for field, value in payload.dict(exclude_unset=True).items():
+        setattr(user, field, value)
+    db.commit()
+    db.refresh(user)
+    return user
 
-@router.delete("/assignments/{assignment_id}")
-def delete_assignment(
-    assignment_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
-):
-    """Delete an assignment"""
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
-    if not assignment:
-        raise HTTPException(status_code=404, detail="Assignment not found")
+
+# ---------- DELETE USER ----------
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int,
+                db: Session = Depends(get_db),
+                current_user: models.User = Depends(get_current_active_user_with_role(['admin']))):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return
     
-    try:
-        db.delete(assignment)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Failed to delete assignment")
-    
-    return {"message": "Assignment deleted successfully"}
+    # In a real app, you'd have a templates table
+    # For now, we'll store it in a JSON file or separate table
+
+    return {
+        "message": "Template created",
+        "template_id": 1,  # Replace with actual ID
+        "share_url": f"/templates/1"
+    }
