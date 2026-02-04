@@ -1,41 +1,24 @@
-# backend/dependencies.py
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from typing import Optional
-import os
+from typing import List, Optional
 
-from models import User, Base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import models
+from database import SessionLocal
+from config import settings
 
-# Configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./islandquest.db")
-SECRET_KEY = os.getenv("SECRET_KEY", "your_super_secret_key_here_change_this_in_production")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-
-# Database setup
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Password hashing
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    
+    schemes=["argon2", "bcrypt"],
+    default="argon2",
     deprecated="auto"
 )
 
-# OAuth2
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Database dependency
+
 def get_db():
     db = SessionLocal()
     try:
@@ -43,50 +26,61 @@ def get_db():
     finally:
         db.close()
 
-# Password utilities
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a hashed password"""
+
+def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password: str) -> str:
-    """Hash a password"""
+
+def get_password_hash(password):
     return pwd_context.hash(password)
 
-# JWT utilities
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-# Authentication dependencies
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    """Get the current authenticated user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY,
+                             algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
-    user = db.query(User).filter(User.username == username).first()
+
+    user = db.query(models.User).filter(
+        models.User.username == username).first()
     if user is None:
         raise credentials_exception
     return user
 
-def get_current_active_user(current_user: User = Depends(get_current_user)):
-    """Get current active user (additional check if needed)"""
+
+def get_current_active_user(current_user: models.User = Depends(get_current_user)):
     if not current_user:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def get_current_active_user_with_role(required_roles: List[str]):
+    def _get_current_active_user_with_role(current_user: models.User = Depends(get_current_active_user)):
+        if current_user.role not in required_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions"
+            )
+        return current_user
+    return _get_current_active_user_with_role
