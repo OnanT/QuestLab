@@ -43,13 +43,15 @@ export default function LessonViewPage() {
       
       // Find related quizzes
       const related = quizzesRes.data.filter(q => q.lesson_id === parseInt(lessonId));
+      console.log("quizzesRes.data:", quizzesRes.data);
+      console.log("relatedQuizzes count:", related.length);
       setRelatedQuizzes(related);
       
       // Fetch user progress for this lesson
       try {
-        const progressRes = await apiClient.get(`/progress/user/${lessonId}`);
-        if (progressRes.data && progressRes.data.length > 0) {
-          setUserProgress(progressRes.data[0]);
+        const progressRes = await apiClient.get(`/progress/lesson/${lessonId}`);
+        if (progressRes.data) { // The /lesson/{lesson_id} endpoint returns an object, not an array
+          setUserProgress(progressRes.data);
         }
       } catch (progressError) {
         console.log("No progress record found for this lesson");

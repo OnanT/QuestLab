@@ -1,4 +1,3 @@
-// frontend/src/pages/RegisterPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
@@ -7,7 +6,10 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
-import { User, Mail, Lock, Eye, EyeOff, School, Users } from "lucide-react";
+import { 
+  User, Mail, Lock, Eye, EyeOff, School, Users, MapPin, GraduationCap,
+  ArrowLeft, ShieldCheck, Sparkles, UserCircle, ChevronRight
+} from "lucide-react";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -16,20 +18,19 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
     role: "student",
+    country: "",
+    school: "",
+    grade: "",
     parentId: ""
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleRoleChange = (value) => {
@@ -40,270 +41,260 @@ export default function RegisterPage() {
     }));
   };
 
-  const validateForm = () => {
-    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error("Please fill in all required fields");
-      return false;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return false;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address");
-      return false;
-    }
-
-    return true;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
 
     setLoading(true);
-    
     try {
-      // Prepare data for backend
       const userData = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
         role: formData.role,
+        country: formData.country || null,
+        school: formData.school || null,
+        grade: formData.grade ? parseInt(formData.grade) : null,
       };
-
-      // Add parent_id only if role is student and parentId is provided
       if (formData.role === "student" && formData.parentId) {
         userData.parent_id = parseInt(formData.parentId);
       }
 
       await register(userData);
-      toast.success("Registration successful! Please log in.");
+      toast.success("Account created! Let's get started.");
       navigate("/login");
     } catch (error) {
       console.error("Registration error:", error);
-      // Error is already handled by auth context
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-teal-50 p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <School className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col items-center justify-center p-4 md:p-8">
+      <div className="max-w-2xl w-full grid lg:grid-cols-5 bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100">
+        
+        {/* Left Side - Visual Sidebar */}
+        <div className="hidden lg:flex lg:col-span-2 bg-gradient-to-b from-teal-600 to-teal-700 p-10 flex-col justify-between relative">
+          <div className="relative z-10 animate-fadeInUp">
+            <Link to="/" className="flex items-center gap-2 text-teal-100 hover:text-white transition-colors mb-12 group">
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="text-xs font-bold uppercase tracking-widest">Back</span>
+            </Link>
+            
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 border border-white/20">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-3xl font-black font-heading text-white leading-tight mb-4">Start Your Quest!</h2>
+            <p className="text-teal-100 font-medium text-sm leading-relaxed opacity-90">
+              Join thousands of students across the Caribbean in the ultimate learning adventure.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Join QuestLab</h1>
-          <p className="text-slate-600">Create your account and start learning today</p>
+
+          <div className="relative z-10 pt-10 border-t border-white/10 animate-fadeInUp stagger-2">
+            <div className="flex -space-x-3 mb-4">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="w-10 h-10 rounded-full border-2 border-teal-600 bg-teal-400 flex items-center justify-center text-white text-[10px] font-bold">
+                  {String.fromCharCode(64 + i)}
+                </div>
+              ))}
+              <div className="w-10 h-10 rounded-full border-2 border-teal-600 bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-[10px] font-bold">
+                +2k
+              </div>
+            </div>
+            <p className="text-[10px] font-black text-teal-200 uppercase tracking-[0.2em]">Already Learning</p>
+          </div>
+
+          {/* Decorative circles */}
+          <div className="absolute top-[-10%] right-[-10%] w-40 h-40 bg-teal-500 rounded-full opacity-20 blur-2xl"></div>
+          <div className="absolute bottom-[20%] left-[-20%] w-32 h-32 bg-emerald-400 rounded-full opacity-20 blur-2xl"></div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-slate-700">Username *</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="pl-10 bg-slate-50 border-slate-200"
-                  placeholder="Choose a username"
-                  required
-                  disabled={loading}
-                />
+        {/* Right Side - Form */}
+        <div className="lg:col-span-3 p-8 md:p-12">
+          <div className="mb-10 animate-fadeInUp">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-600">Step 1: Basics</span>
+            </div>
+            <h1 className="text-3xl font-black font-heading text-slate-900">Create Account</h1>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5 animate-fadeInUp stagger-1">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Username</Label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
+                  <Input
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                    placeholder="Choose name"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Account Type</Label>
+                <Select value={formData.role} onValueChange={handleRoleChange}>
+                  <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student" className="font-bold text-slate-700">Student</SelectItem>
+                    <SelectItem value="parent" className="font-bold text-slate-700">Parent</SelectItem>
+                    <SelectItem value="teacher" className="font-bold text-slate-700">Teacher</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-700">Email *</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</Label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                 <Input
-                  id="email"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="pl-10 bg-slate-50 border-slate-200"
-                  placeholder="Enter your email"
+                  className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                  placeholder="name@example.com"
                   required
-                  disabled={loading}
                 />
               </div>
             </div>
 
-            {/* Role */}
-            <div className="space-y-2">
-              <Label htmlFor="role" className="text-slate-700">I am a *</Label>
-              <Select value={formData.role} onValueChange={handleRoleChange} disabled={loading}>
-                <SelectTrigger className="bg-slate-50 border-slate-200">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student" className="flex items-center gap-2">
-                    <School className="w-4 h-4" />
-                    Student
-                  </SelectItem>
-                  <SelectItem value="parent" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Parent
-                  </SelectItem>
-                  <SelectItem value="teacher" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Teacher
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500">
-                {formData.role === "student" && "Students can learn, play games, and earn rewards"}
-                {formData.role === "parent" && "Parents can track their children's progress and create rewards"}
-                {formData.role === "teacher" && "Teachers can create lessons, quizzes, and track student progress"}
-              </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
+                  <Input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="h-12 pl-11 pr-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                    placeholder="••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors p-1"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Confirm</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
+                  <Input
+                    name="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                    placeholder="••••••"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Parent ID (only for students) */}
-            {formData.role === "student" && (
+            <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="parentId" className="text-slate-700">Parent ID (Optional)</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Country (Optional)</Label>
+                <div className="relative group">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
+                  <Input
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                    placeholder="e.g. St. Kitts"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grade (Optional)</Label>
+                <div className="relative group">
+                  <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
+                  <Input
+                    name="grade"
+                    type="number"
+                    value={formData.grade}
+                    onChange={handleChange}
+                    className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                    placeholder="1-12"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">School (Optional)</Label>
+              <div className="relative group">
+                <School className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                 <Input
-                  id="parentId"
-                  name="parentId"
-                  type="number"
-                  value={formData.parentId}
+                  name="school"
+                  value={formData.school}
                   onChange={handleChange}
-                  className="bg-slate-50 border-slate-200"
-                  placeholder="Enter your parent's user ID"
-                  disabled={loading}
+                  className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
+                  placeholder="School name"
                 />
-                <p className="text-xs text-slate-500">
-                  If you're registering as a student, you can link your parent's account
-                </p>
+              </div>
+            </div>
+
+            {formData.role === "student" && (
+              <div className="space-y-2 pt-2">
+                <div className="p-4 bg-teal-50 rounded-xl border border-teal-100">
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-teal-600 block mb-2">Link Parent (Optional)</Label>
+                  <div className="relative group">
+                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-300 group-focus-within:text-teal-500 transition-colors" />
+                    <Input
+                      name="parentId"
+                      type="number"
+                      value={formData.parentId}
+                      onChange={handleChange}
+                      className="h-10 pl-11 bg-white border-teal-100 text-sm"
+                      placeholder="Enter Parent ID"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-700">Password *</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="pl-10 pr-10 bg-slate-50 border-slate-200"
-                  placeholder="Create a password"
-                  required
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                  tabIndex={-1}
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-slate-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-700">Confirm Password *</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="pl-10 pr-10 bg-slate-50 border-slate-200"
-                  placeholder="Confirm your password"
-                  required
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                  tabIndex={-1}
-                  disabled={loading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5 text-slate-400" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-slate-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Terms and Conditions */}
-            <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                id="terms"
-                required
-                className="mt-1"
-                disabled={loading}
-              />
-              <label htmlFor="terms" className="text-sm text-slate-600">
-                I agree to the{" "}
-                <Link to="/terms" className="text-teal-600 hover:text-teal-700 hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link to="/privacy" className="text-teal-600 hover:text-teal-700 hover:underline">
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800"
               disabled={loading}
+              className="w-full h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-black font-accent text-lg shadow-xl shadow-teal-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0 mt-6"
             >
               {loading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Creating account...
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Joining...</span>
                 </div>
               ) : (
-                "Create Account"
+                <span className="flex items-center gap-2 uppercase tracking-widest">
+                  Create Account <ChevronRight className="w-5 h-5" />
+                </span>
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-600">
-              Already have an account?{" "}
-              <Link to="/login" className="font-medium text-teal-600 hover:text-teal-700 hover:underline">
-                Sign in here
+          <div className="mt-8 text-center">
+            <p className="text-sm font-medium text-slate-500">
+              Already a member?{" "}
+              <Link to="/login" className="text-teal-600 font-bold hover:underline">
+                Sign In
               </Link>
             </p>
           </div>

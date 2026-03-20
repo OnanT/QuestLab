@@ -1,79 +1,141 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../App";
 import { Button } from "../components/ui/button";
 import { 
-  Home, BookOpen, HelpCircle, Gamepad2, Trophy, Award, LogOut, Star, Medal, Flame
+  LogOut, Star, Award, Trophy, BookOpen, 
+  HelpCircle, Gamepad2, Home, User, Flame
 } from "lucide-react";
 
 export default function StudentNav() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
+  const navLinks = [
+    { to: "/dashboard", icon: Home, label: "Home", testId: "mob-nav-home" },
+    { to: "/lessons", icon: BookOpen, label: "Lessons", testId: "mob-nav-lessons" },
+    { to: "/quizzes", icon: HelpCircle, label: "Quizzes", testId: "mob-nav-quizzes" },
+    { to: "/games", icon: Gamepad2, label: "Games", testId: "mob-nav-games" },
+    { to: "/achievements", icon: Award, label: "Awards", testId: "mob-nav-achievements" },
+  ];
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-6">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl font-accent">Q</span>
+    <>
+      {/* ---- Desktop Navigation ---- */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo */}
+            <Link to="/dashboard" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 group-hover:scale-105 transition-transform">
+                <span className="text-white font-bold text-xl md:text-2xl font-accent">Q</span>
               </div>
-              <span className="text-xl font-bold font-heading text-slate-800 hidden sm:block">QuestLab</span>
+              <span className="text-xl md:text-2xl font-bold font-heading text-slate-800 tracking-tight">QuestLab</span>
             </Link>
 
-            {/* Nav Links */}
-            <div className="hidden md:flex items-center gap-1">
-              <Link to="/dashboard" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
-                <Home className="w-4 h-4 inline mr-1" /> Home
-              </Link>
-              <Link to="/lessons" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
-                <BookOpen className="w-4 h-4 inline mr-1" /> Lessons
-              </Link>
-              <Link to="/quizzes" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
-                <HelpCircle className="w-4 h-4 inline mr-1" /> Quizzes
-              </Link>
-              <Link to="/games" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
-                <Gamepad2 className="w-4 h-4 inline mr-1" /> Games
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Quick stats */}
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="flex items-center gap-1.5 bg-amber-100 px-3 py-1.5 rounded-full">
-                <Star className="w-4 h-4 text-amber-600" />
-                <span className="font-accent font-semibold text-amber-700 text-sm">{user?.points || 0}</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-teal-100 px-3 py-1.5 rounded-full">
-                <Medal className="w-4 h-4 text-teal-600" />
-                <span className="font-accent font-semibold text-teal-700 text-sm">Lvl {user?.level || 1}</span>
-              </div>
+            {/* Desktop Links */}
+            <div className="hidden md:flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
+              {navLinks.map(({ to, icon: Icon, label }) => {
+                const isActive = location.pathname === to;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                      isActive 
+                        ? "bg-white text-teal-600 shadow-sm border border-slate-200" 
+                        : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </Link>
+                );
+              })}
             </div>
 
-            {/* User menu */}
-            <div className="flex items-center gap-2">
-              <Link to="/achievements" className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden sm:block">
-                <Award className="w-5 h-5 text-purple-500" />
-              </Link>
-              <Link to="/leaderboard" className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden sm:block">
-                <Trophy className="w-5 h-5 text-amber-500" />
-              </Link>
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">{user?.display_name?.[0]?.toUpperCase()}</span>
+            {/* User Stats & Actions */}
+            <div className="flex items-center gap-2 md:gap-4">
+              {/* Streak */}
+              <div 
+                className="hidden sm:flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
+                aria-label={`${user?.streak || 0} day streak`}
+              >
+                <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                <span className="font-bold text-orange-700 text-sm" aria-hidden="true">{user?.streak || 0}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
-                <LogOut className="w-5 h-5 text-slate-500" />
-              </Button>
+
+              {/* Level */}
+              <div 
+                className="hidden sm:flex items-center gap-1.5 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100"
+                aria-label={`Level ${user?.level || 1}`}
+              >
+                <Trophy className="w-4 h-4 text-teal-600" />
+                <span className="font-bold text-teal-700 text-sm" aria-hidden="true">Lvl {user?.level || 1}</span>
+              </div>
+
+              {/* Avatar Link */}
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 ml-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleLogout}
+                  aria-label="Log out"
+                  className="rounded-full hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                </Button>
+                <Link 
+                  to="/profile"
+                  className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all hover:scale-105 active:scale-95 shadow-md overflow-hidden ${
+                    location.pathname === "/profile" ? "border-teal-500 ring-2 ring-teal-500/20" : "border-white"
+                  }`}
+                >
+                  <img 
+                    src={user?.avatar || "/default_avatar.png"} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = "/default_avatar.png"; }}
+                  />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* ---- Mobile Bottom Bar ---- */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-t border-slate-200 flex md:hidden safe-area-bottom shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
+        aria-label="Mobile navigation"
+      >
+        {navLinks.map(({ to, icon: Icon, label, testId }) => {
+          const isActive = location.pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              data-testid={testId}
+              className={`flex flex-col items-center justify-center flex-1 py-2.5 gap-1 min-h-[64px] transition-all ${
+                isActive
+                  ? "text-teal-600"
+                  : "text-slate-400 hover:text-slate-600"
+              }`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <div className={`p-1 rounded-lg transition-colors ${isActive ? "bg-teal-50" : ""}`}>
+                <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : "stroke-[2px]"}`} aria-hidden="true" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

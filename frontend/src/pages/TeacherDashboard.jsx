@@ -1,313 +1,288 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { useAuth, apiClient } from "../App";
+import { useAuth } from "../App";
+import { useTeacherData } from "../hooks/useTeacherData";
 import { Button } from "../components/ui/button";
 import { 
   Users, BookOpen, HelpCircle, Gamepad2, Trophy, LayoutDashboard,
-  LogOut, ChevronRight, Star, Medal, Plus
+  LogOut, ChevronRight, Star, Medal, Plus, RefreshCw, 
+  AlertCircle, Search, Filter, Activity, Settings, UserCircle
 } from "lucide-react";
 
-// Teacher Sidebar
-function TeacherSidebar() {
+// Sidebar Component
+function TeacherSidebar({ user, onLogout }) {
   const location = useLocation();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
   const links = [
-    { path: "/teacher", icon: <LayoutDashboard className="w-5 h-5" />, label: "Dashboard", exact: true },
-    { path: "/teacher/students", icon: <Users className="w-5 h-5" />, label: "My Students" },
-    { path: "/lessons", icon: <BookOpen className="w-5 h-5" />, label: "Lessons" },
-    { path: "/quizzes", icon: <HelpCircle className="w-5 h-5" />, label: "Quizzes" },
-    { path: "/games", icon: <Gamepad2 className="w-5 h-5" />, label: "Games" },
-    { path: "/leaderboard", icon: <Trophy className="w-5 h-5" />, label: "Leaderboard" },
+    { path: "/teacher", icon: LayoutDashboard, label: "Overview", exact: true },
+    { path: "/teacher/students", icon: Users, label: "My Class" },
+    { path: "/lessons", icon: BookOpen, label: "Curriculum" },
+    { path: "/quizzes", icon: HelpCircle, label: "Assessments" },
+    { path: "/games", icon: Gamepad2, label: "Learning Games" },
+    { path: "/profile", icon: UserCircle, label: "My Profile" },
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
-      <div className="p-6 border-b border-slate-200">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center">
+    <div className="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col h-screen sticky top-0">
+      <div className="p-8">
+        <Link to="/dashboard" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 group-hover:scale-105 transition-transform">
             <span className="text-white font-bold text-xl font-accent">Q</span>
           </div>
           <div>
-            <span className="text-lg font-bold font-heading text-slate-800">QuestLab</span>
-            <p className="text-xs text-slate-500">Teacher Portal</p>
+            <span className="text-xl font-bold font-heading text-slate-800 tracking-tight">QuestLab</span>
+            <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mt-0.5">Teacher Portal</p>
           </div>
-        </div>
+        </Link>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {links.map((link) => {
-          const isActive = link.exact 
-            ? location.pathname === link.path 
-            : location.pathname.startsWith(link.path);
+      <nav className="flex-1 px-4 space-y-1.5">
+        {links.map(({ path, icon: Icon, label, exact }) => {
+          const isActive = exact 
+            ? location.pathname === path 
+            : location.pathname.startsWith(path);
+          
           return (
             <Link
-              key={link.path}
-              to={link.path}
-              className={`sidebar-link ${isActive ? "active" : ""}`}
+              key={path}
+              to={path}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                isActive 
+                  ? "bg-teal-50 text-teal-600 shadow-sm border border-teal-100/50" 
+                  : "text-slate-500 hover:text-teal-600 hover:bg-slate-50"
+              }`}
             >
-              {link.icon}
-              <span>{link.label}</span>
+              <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : "stroke-[2px]"}`} />
+              {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold">{user?.display_name?.[0]?.toUpperCase()}</span>
-          </div>
+      <div className="p-6 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex items-center gap-3 mb-6 px-2">
+          <Link to="/profile" className="w-10 h-10 rounded-full border-2 border-white shadow-md overflow-hidden hover:scale-105 transition-transform">
+            <img 
+              src={user?.avatar || "/default_avatar.png"} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.src = "/default_avatar.png"; }}
+            />
+          </Link>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-slate-900 truncate">{user?.display_name}</p>
-            <p className="text-xs text-slate-500">{user?.email}</p>
+            <p className="text-sm font-black text-slate-900 truncate">{user?.display_name || user?.username}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase truncate">{user?.role}</p>
           </div>
         </div>
-        <Button variant="outline" className="w-full" onClick={handleLogout} data-testid="teacher-logout-btn">
-          <LogOut className="w-4 h-4 mr-2" />
-          Log Out
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-3 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all" 
+          onClick={onLogout}
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
         </Button>
       </div>
     </div>
   );
 }
 
-// Teacher Overview
-function TeacherOverview() {
-  const [students, setStudents] = useState([]);
-  const [stats, setStats] = useState({ lessons: 0, quizzes: 0, games: 0 });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [studentsRes, lessonsRes, quizzesRes, gamesRes] = await Promise.all([
-        apiClient.get("/my-students"),
-        apiClient.get("/lessons"),
-        apiClient.get("/quizzes"),
-        apiClient.get("/games")
-      ]);
-      setStudents(studentsRes.data);
-      setStats({
-        lessons: lessonsRes.data.length,
-        quizzes: quizzesRes.data.length,
-        games: gamesRes.data.length
-      });
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+// Overview Component
+function TeacherOverview({ students, stats, loading, error, refetch }) {
+  if (loading && !students.length) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="h-10 bg-slate-200 rounded-xl w-64"></div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-slate-200 rounded-2xl"></div>)}
+        </div>
+        <div className="h-96 bg-slate-200 rounded-3xl w-full"></div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold font-heading text-slate-900 mb-6">Teacher Dashboard</h1>
+    <div className="animate-fadeInUp">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-black font-heading text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 font-medium">Welcome back to your virtual classroom</p>
+        </div>
+        <Button onClick={refetch} disabled={loading} variant="ghost" className="rounded-full w-10 h-10 p-0 text-slate-400">
+          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
       
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="student-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{students.length}</p>
-              <p className="text-sm text-slate-500">My Students</p>
-            </div>
-          </div>
-        </div>
-        <div className="student-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-teal-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.lessons}</p>
-              <p className="text-sm text-slate-500">Lessons</p>
-            </div>
-          </div>
-        </div>
-        <div className="student-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <HelpCircle className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.quizzes}</p>
-              <p className="text-sm text-slate-500">Quizzes</p>
-            </div>
-          </div>
-        </div>
-        <div className="student-card p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Gamepad2 className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{stats.games}</p>
-              <p className="text-sm text-slate-500">Games</p>
-            </div>
-          </div>
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <StatItem icon={Users} label="Total Students" value={students.length} color="blue" />
+        <StatItem icon={BookOpen} label="Active Lessons" value={stats.lessons} color="teal" />
+        <StatItem icon={HelpCircle} label="Quizzes" value={stats.quizzes} color="orange" />
+        <StatItem icon={Gamepad2} label="Games" value={stats.games} color="purple" />
       </div>
 
-      {/* Top Students */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold font-heading text-slate-900">My Students</h2>
-          <Link to="/teacher/students" className="text-teal-600 hover:text-teal-700 text-sm font-medium flex items-center gap-1">
-            View all <ChevronRight className="w-4 h-4" />
-          </Link>
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Top Performers */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold font-heading text-slate-800 flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+              Student Performance
+            </h2>
+            <Link to="/teacher/students" className="text-sm font-bold text-teal-600 hover:underline">
+              View All Class
+            </Link>
+          </div>
+
+          <div className="student-card overflow-hidden bg-white border-2 border-slate-100">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50/50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
+                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Level</th>
+                    <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Accuracy</th>
+                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Points</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {students.slice(0, 5).map((student) => (
+                    <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-gradient-to-br from-teal-100 to-teal-200 rounded-full flex items-center justify-center text-teal-700 font-bold text-xs shadow-sm">
+                            {(student.display_name || student.username)[0].toUpperCase()}
+                          </div>
+                          <span className="font-bold text-slate-700 group-hover:text-teal-600 transition-colors">{student.display_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-lg font-bold text-[10px] uppercase border border-teal-100">
+                          Lvl {student.level || 1}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-teal-500 rounded-full" style={{ width: `${student.average_score || 0}%` }}></div>
+                          </div>
+                          <span className="text-xs font-black text-slate-500">{Math.round(student.average_score || 0)}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="font-accent font-black text-slate-900">{student.total_points || 0}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-teal-500 border-t-transparent"></div>
+        {/* Quick Actions & Tips */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold font-heading text-slate-800">Quick Tools</h2>
+          <div className="space-y-3">
+            <ToolButton icon={Plus} label="Create New Lesson" color="teal" to="/teacher/create-lesson" />
+            <ToolButton icon={Search} label="Find Resources" color="blue" to="/lessons" />
+            <ToolButton icon={Activity} label="Class Insights" color="purple" to="/teacher/students" />
+            <ToolButton icon={Settings} label="Class Settings" color="slate" to="/settings" />
           </div>
-        ) : students.length === 0 ? (
-          <div className="student-card p-8 text-center">
-            <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">No students assigned yet</p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {students.slice(0, 6).map((student) => (
-              <div key={student.id} className="student-card p-4 flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">{student.display_name?.[0]?.toUpperCase()}</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-slate-900">{student.display_name}</h3>
-                  <div className="flex items-center gap-3 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-500" />
-                      {student.points || 0}
-                    </span>
-                    <span>Level {student.level || 1}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-bold font-heading text-slate-900 mb-4">Quick Actions</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Link to="/lessons" className="student-card p-6 flex items-center gap-4 group">
-            <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-teal-600" />
+          <div className="p-6 bg-amber-50 rounded-2xl border-2 border-amber-100/50">
+            <div className="flex items-center gap-3 mb-3 text-amber-700">
+              <Trophy className="w-5 h-5" />
+              <h3 className="font-bold text-sm uppercase tracking-wider">Teacher Tip</h3>
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-slate-900">Browse Lessons</h3>
-              <p className="text-sm text-slate-500">View and assign lessons</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-          </Link>
-
-          <Link to="/quizzes" className="student-card p-6 flex items-center gap-4 group">
-            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-              <HelpCircle className="w-6 h-6 text-orange-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-slate-900">Browse Quizzes</h3>
-              <p className="text-sm text-slate-500">View and manage quizzes</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-          </Link>
+            <p className="text-sm text-amber-800 leading-relaxed font-medium">
+              Encourage healthy competition! Students with more than 500 XP this week are 40% more likely to master their current concepts.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Teacher Students View
-function TeacherStudents() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Student Management View
+function TeacherStudents({ students, loading, refetch }) {
+  const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  const fetchStudents = async () => {
-    try {
-      const res = await apiClient.get("/my-students");
-      setStudents(res.data);
-    } catch (error) {
-      console.error("Failed to fetch students:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filtered = students.filter(s => 
+    (s.display_name || s.username).toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold font-heading text-slate-900 mb-6">My Students</h1>
+    <div className="animate-fadeInUp">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black font-heading text-slate-900 mb-2">My Class</h1>
+        <p className="text-slate-500 font-medium">Monitor and manage student progress</p>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <input 
+            type="text"
+            placeholder="Find a student..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-2xl focus:border-teal-500 focus:outline-none transition-all shadow-sm"
+          />
+        </div>
+        <Button variant="outline" className="rounded-2xl py-3 px-6 border-2 font-bold text-slate-700 bg-white">
+          <Filter className="w-4 h-4 mr-2" />
+          Filter Grade
+        </Button>
+      </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-teal-500 border-t-transparent"></div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => <div key={i} className="h-64 bg-slate-100 rounded-3xl animate-pulse"></div>)}
         </div>
-      ) : students.length === 0 ? (
-        <div className="student-card p-12 text-center">
+      ) : filtered.length === 0 ? (
+        <div className="student-card p-12 text-center bg-white border-dashed border-2 border-slate-200 shadow-none">
           <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-slate-700 mb-2">No students assigned</h3>
-          <p className="text-slate-500">Contact admin to assign students to your class</p>
+          <h3 className="text-xl font-bold text-slate-700 mb-2">No students found</h3>
+          <p className="text-slate-500">Try adjusting your search criteria</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {students.map((student) => (
-            <div key={student.id} className="student-card p-6">
+          {filtered.map((student) => (
+            <div key={student.id} className="student-card p-6 border-2 border-slate-100 group hover:border-teal-200 transition-all">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">{student.display_name?.[0]?.toUpperCase()}</span>
+                <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform">
+                  <span className="text-xl font-black font-accent">{(student.display_name || student.username)[0].toUpperCase()}</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">{student.display_name}</h3>
-                  <p className="text-sm text-slate-500">Grade {student.grade_level || "N/A"}</p>
+                  <h3 className="font-extrabold text-slate-900 group-hover:text-teal-600 transition-colors">{student.display_name}</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade {student.grade_level || "3"}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 bg-amber-50 rounded-xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="w-4 h-4 text-amber-600" />
-                    <span className="text-xs text-amber-600">Points</span>
-                  </div>
-                  <p className="text-xl font-bold font-accent text-amber-700">{student.points || 0}</p>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total XP</p>
+                  <p className="text-lg font-black font-accent text-slate-800">{student.total_points || 0}</p>
                 </div>
-                <div className="p-3 bg-teal-50 rounded-xl">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Medal className="w-4 h-4 text-teal-600" />
-                    <span className="text-xs text-teal-600">Level</span>
-                  </div>
-                  <p className="text-xl font-bold font-accent text-teal-700">{student.level || 1}</p>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Level</p>
+                  <p className="text-lg font-black font-accent text-teal-600">{student.level || 1}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-                <div className="flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4" />
-                  <span>{student.quizzes_completed || 0} quizzes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Gamepad2 className="w-4 h-4" />
-                  <span>{student.games_played || 0} games</span>
-                </div>
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                <span>Quiz Accuracy</span>
+                <span className="text-slate-900">{Math.round(student.average_score || 0)}%</span>
               </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner mb-6">
+                <div className="h-full bg-gradient-to-r from-teal-500 to-sky-400 rounded-full" style={{ width: `${student.average_score || 0}%` }}></div>
+              </div>
+
+              <Button className="btn-primary w-full rounded-xl py-2 text-xs">
+                View Reports
+                <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
+              </Button>
             </div>
           ))}
         </div>
@@ -316,15 +291,68 @@ function TeacherStudents() {
   );
 }
 
+// Sub-components
+function StatItem({ icon: Icon, label, value, color }) {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    teal: "bg-teal-50 text-teal-600 border-teal-100",
+    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    purple: "bg-purple-50 text-purple-600 border-purple-100",
+  };
+
+  return (
+    <div className={`student-card p-5 border shadow-sm ${colors[color]}`}>
+      <div className="flex flex-col gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color].split(' ')[0]} border shadow-sm`}>
+          <Icon className="w-5 h-5 stroke-[2.5px]" />
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-70 mb-1">{label}</p>
+          <p className="text-2xl font-black font-accent text-slate-900 tabular-nums">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToolButton({ icon: Icon, label, color, to }) {
+  const colors = {
+    teal: "text-teal-600 bg-teal-50 border-teal-100 hover:bg-teal-100",
+    blue: "text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-100",
+    purple: "text-purple-600 bg-purple-50 border-purple-100 hover:bg-purple-100",
+    slate: "text-slate-600 bg-slate-50 border-slate-100 hover:bg-slate-100",
+  };
+
+  return (
+    <Link to={to} className={`flex items-center gap-3 p-4 rounded-2xl border-2 font-bold text-sm transition-all group ${colors[color]}`}>
+      <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:scale-110 transition-transform">
+        <Icon className="w-4 h-4" />
+      </div>
+      {label}
+      <ChevronRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+    </Link>
+  );
+}
+
 // Main Teacher Dashboard
 export default function TeacherDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const teacherData = useTeacherData();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
-    <div className="flex min-h-screen bg-[#FFFDF5]" data-testid="teacher-dashboard">
-      <TeacherSidebar />
-      <main className="flex-1 p-8">
+    <div className="flex min-h-screen bg-[var(--color-bg)]" data-testid="teacher-dashboard">
+      <TeacherSidebar user={user} onLogout={handleLogout} />
+      
+      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-x-hidden">
         <Routes>
-          <Route index element={<TeacherOverview />} />
-          <Route path="students" element={<TeacherStudents />} />
+          <Route index element={<TeacherOverview {...teacherData} />} />
+          <Route path="students" element={<TeacherStudents {...teacherData} />} />
         </Routes>
       </main>
     </div>

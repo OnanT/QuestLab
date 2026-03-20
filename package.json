@@ -1,0 +1,26 @@
+{
+  "name": "questlab",
+  "version": "1.0.0",
+  "description": "A comprehensive TUI (Text User Interface) and alias system for managing your QuestLab deployment with ease and style!",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OnanT/QuestLab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/OnanT/QuestLab/issues"
+  },
+  "homepage": "https://github.com/OnanT/QuestLab#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.1",
+    "@types/node": "^25.2.0"
+  }
+}

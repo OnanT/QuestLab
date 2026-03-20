@@ -51,7 +51,7 @@ export default function LandingPage() {
               </h1>
               <p className="text-lg text-slate-600 max-w-lg leading-relaxed">
                 QuestLab makes learning exciting for Caribbean students with interactive lessons, 
-                engaging games, and rewarding achievements. Join thousands of learners on their educational adventure!
+                engaging games, and rewarding achievements. Every lesson is a new quest!
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/register">
@@ -88,7 +88,7 @@ export default function LandingPage() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-teal-400/20 to-orange-400/20 rounded-3xl transform rotate-3" />
               <img
-              src="https://onan.shop/assets/images/gallery/questlab-landing.png"
+              src="/questlab-600x400-2.png"
               alt="Students learning"
               className="relative rounded-3xl shadow-2xl shadow-teal-500/20 w-full object-cover aspect-[4/3]"
               onError={(e) => {

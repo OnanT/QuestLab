@@ -1,6 +1,7 @@
-version: '3.8'
-
 services:
+  # ============================================================================
+  # PostgreSQL Database
+  # ============================================================================
   postgres:
     image: postgres:15-alpine
     container_name: questlab_postgres
@@ -12,6 +13,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres-config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./postgres-config/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    ports:
+      - "5433:5432"
     networks:
       - questlab_network
     healthcheck:
@@ -20,12 +25,57 @@ services:
       timeout: 5s
       retries: 5
 
+  # ============================================================================
+  # Redis (Cache & Message Broker)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: questlab_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - questlab_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5    
+      
+  # ============================================================================
+  # pgAdmin (Optional - for database management)
+  # ============================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: questlab-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - questlab_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    profiles:
+      - tools  # Only starts when using --profile tools
+      
+  # ============================================================================
+  # Backend Service (FastAPI)
+  # ============================================================================
   backend:
     build: ./backend
     container_name: questlab_backend
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -34,22 +84,106 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       UPLOAD_PATH: ${UPLOAD_PATH}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
+      - ./backend:/app 
       - uploads_volume:/app/uploads
+      - ./backend/logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
     networks:
       - questlab_network
     expose:
       - "8000"
-
-  nginx:
+    command: ["/bin/bash", "-c", "sleep 10 && uvicorn main:app --host 0.0.0.0 --port 8000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+      
+  # ============================================================================
+  # React Frontend (Build Stage)
+  # ============================================================================
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: questlab_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    networks:
+      - questlab_network
+
+  # ============================================================================
+  # Celery Worker (Background Tasks)
+  # Runs: Analytics aggregation, popularity updates, cleanup tasks
+  # ============================================================================
+  celery-worker:
+    build: ./backend
+    container_name: questlab_celery_worker
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
+    volumes:
+      - uploads_volume:/app/uploads
+      - ./backend/logs:/app/logs
+    networks:
+      - questlab_network
+    # Using tasks.py with celery_app instance
+    command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+
+  # ============================================================================
+  # Celery Beat (Task Scheduler)
+  # Schedules: Daily analytics (1 AM), Popularity updates (every 15min), etc.
+  # ============================================================================
+  celery-beat:
+    build: ./backend
+    container_name: questlab_celery_beat
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    volumes:
+      - ./backend/logs:/app/logs
+    networks:
+      - questlab_network
+    # Using tasks.py with celery_app instance
+    command: celery -A tasks.celery_app beat --loglevel=info
+
+  # ============================================================================
+  # Nginx Web Server with Certbot for SSL
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
     container_name: questlab_nginx
     restart: unless-stopped
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
+      - frontend
     ports:
       - "80:80"
       - "443:443"
@@ -61,10 +195,12 @@ services:
       - questlab_network
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
 
+  # ============================================================================
+  # Certbot for SSL certificates
+  # ============================================================================
   certbot:
     image: certbot/certbot
     container_name: questlab_certbot
-    restart: unless-stopped
     depends_on:
       - nginx
     volumes:
@@ -73,11 +209,21 @@ services:
     networks:
       - questlab_network
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
+    
+# ============================================================================
+# Network and Volumes
+# ============================================================================
 networks:
   questlab_network:
     driver: bridge
+    name: questlab_network
 
 volumes:
   postgres_data:
+    name: questlab_postgres_data  
+  pgadmin_data:
+    name: questlab_pgadmin_data
   uploads_volume:
+    name: questlab_uploads_volume
+  redis_data:
+    name: questlab_redis_data

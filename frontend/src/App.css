@@ -1,21 +1,52 @@
-/* QuestLab Styles */
+/* QuestLab Unified Design Tokens */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Fredoka:wght@400;500;600&display=swap');
 
-/* CSS Variables */
 :root {
-  --primary: #008080;
-  --primary-hover: #006666;
-  --secondary: #FF7F50;
-  --secondary-hover: #E66A3C;
-  --accent: #FFD700;
-  --background: #FFFDF5;
-  --surface: #FFFFFF;
-  --text-primary: #1E293B;
-  --text-secondary: #64748B;
-  --success: #10B981;
-  --warning: #F59E0B;
-  --error: #EF4444;
-  --info: #3B82F6;
+  /* Brand */
+  --color-primary: #0D9488; /* teal-600 — main action color */
+  --color-primary-light: #CCFBF1; /* teal-100 — hover backgrounds */
+  --color-primary-hover: #0F766E; /* teal-700 — pressed state */
+  --color-secondary: #F97316; /* orange-500 — quizzes, warnings */
+  --color-accent: #F59E0B; /* amber-500 — points, achievements */
+
+  /* Surfaces */
+  --color-bg: #F8FAFC; /* slate-50 — page background */
+  --color-surface: #FFFFFF; /* white — cards */
+  --color-surface-raised: #F1F5F9; /* slate-100 — hover states, skeletons */
+  --color-border: #E2E8F0; /* slate-200 */
+  --color-border-focus: #99F6E4; /* teal-200 — focus rings */
+
+  /* Text */
+  --color-text-primary: #0F172A; /* slate-900 */
+  --color-text-secondary: #64748B; /* slate-500 */
+  --color-text-muted: #94A3B8; /* slate-400 */
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Spacing & Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* Legacy mapping for backward compatibility during transition */
+  --primary: var(--color-primary);
+  --primary-hover: var(--color-primary-hover);
+  --secondary: var(--color-secondary);
+  --accent: var(--color-accent);
+  --background: var(--color-bg);
+  --surface: var(--color-surface);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --error: var(--color-error);
+  --info: var(--color-info);
 }
 
 * {
@@ -27,8 +58,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--background);
-  color: var(--text-primary);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -37,7 +68,6 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.025em;
 }
 
-/* Fun accent text */
 .font-accent {
   font-family: 'Fredoka', sans-serif;
 }
@@ -49,47 +79,39 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: var(--color-surface-raised);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
+  background: var(--color-text-muted);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--color-text-secondary);
 }
 
-/* Glassmorphism card */
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 128, 128, 0.1);
-}
-
-/* Student card hover effect */
+/* Component Classes */
 .student-card {
-  background: white;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 10px 40px rgba(0, 128, 128, 0.1);
-  border-radius: 24px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border-radius: var(--radius-xl);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
 }
 
 .student-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 60px rgba(0, 128, 128, 0.15);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
-/* Game card with gradient border */
 .game-card {
   position: relative;
-  background: white;
-  border-radius: 20px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  border: 1px solid var(--color-border);
 }
 
 .game-card::before {
@@ -99,288 +121,70 @@ h1, h2, h3, h4, h5, h6 {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #008080, #FF7F50, #FFD700);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-accent));
 }
 
-/* Button styles */
 .btn-primary {
-  background: var(--primary);
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   padding: 12px 24px;
   font-weight: 600;
   font-family: 'Fredoka', sans-serif;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  box-shadow: 0 4px 14px rgba(0, 128, 128, 0.3);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-primary:hover {
-  background: var(--primary-hover);
-  transform: scale(1.02);
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
 }
 
 .btn-primary:active {
-  transform: scale(0.98);
+  transform: translateY(0);
 }
 
-.btn-secondary {
-  background: var(--secondary);
-  color: white;
-  border: none;
-  border-radius: 9999px;
-  padding: 12px 24px;
-  font-weight: 600;
-  font-family: 'Fredoka', sans-serif;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  box-shadow: 0 4px 14px rgba(255, 127, 80, 0.3);
-}
-
-.btn-secondary:hover {
-  background: var(--secondary-hover);
-  transform: scale(1.02);
-}
-
-/* Points badge */
 .points-badge {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  color: #333;
+  background: linear-gradient(135deg, var(--color-accent), #D97706);
+  color: white;
   padding: 4px 12px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-family: 'Fredoka', sans-serif;
   font-weight: 600;
   font-size: 14px;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
 }
 
-/* Level badge */
 .level-badge {
-  background: linear-gradient(135deg, #008080, #00A0A0);
+  background: linear-gradient(135deg, var(--color-primary), #0D9488);
   color: white;
   padding: 6px 14px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-family: 'Fredoka', sans-serif;
   font-weight: 600;
 }
 
-/* Streak indicator */
-.streak-badge {
-  background: linear-gradient(135deg, #FF7F50, #FF6347);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 9999px;
-  font-family: 'Fredoka', sans-serif;
-  font-weight: 600;
-}
-
-/* Progress bar */
 .progress-bar {
-  height: 12px;
-  background: #E2E8F0;
-  border-radius: 9999px;
+  height: 10px;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #008080, #00A0A0);
-  border-radius: 9999px;
-  transition: width 0.5s ease;
+  background: linear-gradient(90deg, var(--color-primary), #2DD4BF);
+  border-radius: var(--radius-full);
+  transition: width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Quiz option */
-.quiz-option {
-  padding: 16px 20px;
-  border: 2px solid #E2E8F0;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
-}
-
-.quiz-option:hover {
-  border-color: var(--primary);
-  background: rgba(0, 128, 128, 0.05);
-}
-
-.quiz-option.selected {
-  border-color: var(--primary);
-  background: rgba(0, 128, 128, 0.1);
-}
-
-.quiz-option.correct {
-  border-color: var(--success);
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.quiz-option.incorrect {
-  border-color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-/* Animation classes */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-@keyframes confetti {
-  0% {
-    opacity: 1;
-    transform: translateY(0) rotate(0deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(100vh) rotate(720deg);
-  }
-}
-
-.animate-fadeInUp {
-  animation: fadeInUp 0.5s ease forwards;
-}
-
-.animate-pulse-slow {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-/* Staggered animation delays */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-
-/* Sidebar styles */
-.sidebar {
-  background: white;
-  border-right: 1px solid #E2E8F0;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
-}
-
-.sidebar-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.sidebar-link:hover {
-  background: rgba(0, 128, 128, 0.08);
-  color: var(--primary);
-}
-
-.sidebar-link.active {
-  background: rgba(0, 128, 128, 0.12);
-  color: var(--primary);
-  font-weight: 600;
-}
-
-/* Lesson content styles */
-.lesson-content {
-  font-size: 16px;
-  line-height: 1.8;
-}
-
-.lesson-content h2 {
-  color: var(--primary);
-  margin-top: 24px;
-  margin-bottom: 12px;
-}
-
-.lesson-content h3 {
-  color: var(--text-primary);
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
-
-.lesson-content ul, .lesson-content ol {
-  margin: 16px 0;
-  padding-left: 24px;
-}
-
-.lesson-content li {
-  margin: 8px 0;
-}
-
-.lesson-content strong {
-  color: var(--secondary);
-}
-
-/* Admin styles */
-.admin-card {
-  background: white;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.admin-table th {
-  background: #F8FAFC;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-}
-
-/* Game specific styles */
-.skill-builder-input {
-  font-size: 24px;
-  text-align: center;
-  padding: 16px;
-  border: 3px solid #E2E8F0;
-  border-radius: 16px;
-  font-family: 'Fredoka', sans-serif;
-  transition: border-color 0.2s ease;
-}
-
-.skill-builder-input:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.map-challenge-dot {
-  width: 20px;
-  height: 20px;
-  background: var(--secondary);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  box-shadow: 0 2px 8px rgba(255, 127, 80, 0.4);
-}
-
-.map-challenge-dot:hover {
-  transform: scale(1.3);
-}
-
-/* Responsive */
 @media (max-width: 768px) {
   .student-card {
-    border-radius: 16px;
-  }
-  
-  .btn-primary, .btn-secondary {
-    padding: 10px 20px;
-    font-size: 14px;
+    border-radius: var(--radius-lg);
   }
 }

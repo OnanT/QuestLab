@@ -1808,9 +1808,12 @@ D) Moon`}
                         Export
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent descriptionId="export-dialog-description">
                       <DialogHeader>
                         <DialogTitle>Export Lesson</DialogTitle>
+                        <DialogDescription id="export-dialog-description">
+                          Choose a format to export your lesson.
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-3">
                         <Button variant="outline" className="w-full justify-start">

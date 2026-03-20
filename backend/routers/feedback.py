@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 import models, schemas
-from dependencies import get_db, get_current_active_user
+from dependencies import get_db, get_current_active_user, get_current_active_user_with_role
 
 router = APIRouter(
     prefix="/feedback",
@@ -16,6 +16,9 @@ def create_feedback(
     current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Submit feedback for a lesson or general platform
+    """
     db_feedback = models.Feedback(
         user_id=current_user.id,
         lesson_id=feedback.lesson_id,
@@ -27,16 +30,30 @@ def create_feedback(
     db.refresh(db_feedback)
     return db_feedback
 
+@router.get("/", response_model=List[schemas.FeedbackOut])
+def get_all_feedback(
+    current_user: models.User = Depends(get_current_active_user_with_role(["admin", "teacher"])),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all feedback (Admin/Teacher only)
+    """
+    return db.query(models.Feedback).order_by(models.Feedback.created_at.desc()).all()
+
 @router.get("/lesson/{lesson_id}", response_model=List[schemas.FeedbackOut])
 def get_feedback_by_lesson(lesson_id: int, db: Session = Depends(get_db)):
     feedback_entries = db.query(models.Feedback).filter(models.Feedback.lesson_id == lesson_id).all()
-    if not feedback_entries:
-        raise HTTPException(status_code=404, detail="No feedback found for this lesson")
     return feedback_entries
 
 @router.get("/user/{user_id}", response_model=List[schemas.FeedbackOut])
-def get_feedback_by_user(user_id: int, db: Session = Depends(get_db)):
+def get_feedback_by_user(
+    user_id: int, 
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    # Only allow users to see their own feedback, or admins/teachers to see any
+    if current_user.id != user_id and current_user.role not in ["admin", "teacher"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
     feedback_entries = db.query(models.Feedback).filter(models.Feedback.user_id == user_id).all()
-    if not feedback_entries:
-        raise HTTPException(status_code=404, detail="No feedback found from this user")
     return feedback_entries

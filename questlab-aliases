@@ -1,0 +1,352 @@
+# 🎓🎓🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🎓🎓
+#  💡 QuestLab Power Aliases & Functions 💡
+# 🎓🎓🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🎓🎓
+#           Author: Onan Thomas
+# Last Updated: 2026-01-29
+# 🎓🎓🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🎓🎓
+# To use: Add this to your ~/.bashrc or ~/.zshrc
+# if [ -f ~/.questlab-aliases ]; then
+#     . ~/.questlab-aliases
+# fi
+# 🎓🎓🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🔧🎓🎓
+
+# ============================================
+# 🎨 COLOR CONFIGURATION
+# ============================================
+export GREP_COLORS='mt=01;38;5;82:sl=:cx=:fn=35:ln=32:bn=32:se=36'
+export GREP_COLOR='01;38;5;82'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# Color codes for output
+export RED='\033[0;31m'
+export GREEN='\033[0;32m'
+export YELLOW='\033[1;33m'
+export BLUE='\033[0;34m'
+export PURPLE='\033[0;35m'
+export CYAN='\033[0;36m'
+export NC='\033[0m' # No Color
+
+# ============================================
+# 📂 NAVIGATION SHORTCUTS
+# ============================================
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias ~='cd ~'
+alias -- -='cd -'  # Go back to previous directory
+alias c='clear'
+alias h='history'
+alias reload='source ~/.bashrc'
+alias reloadz='source ~/.zshrc'
+
+# QuestLab Directory Shortcuts
+alias q='cd ~/questlab'
+alias qback='cd ~/questlab/backend'
+alias qfront='cd ~/questlab/frontend'
+alias qnginx='cd ~/questlab/nginx'
+alias qlogs='cd ~/questlab/logs'
+alias qscripts='cd ~/questlab/scripts'
+
+# ============================================
+# 📁 FILE OPERATIONS
+# ============================================
+alias ll='ls -lah --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias lt='ls -lth --color=auto'  # Sort by time
+alias lsize='ls -lhS --color=auto'  # Sort by size
+alias tree='tree -C'
+
+# Safety nets
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias mkdir='mkdir -pv'
+
+# Quick file operations
+alias count='find . -type f | wc -l'
+alias size='du -sh'
+
+# ============================================
+# 🐳 DOCKER - QUESTLAB SPECIFIC
+# ============================================
+
+# Basic Docker
+alias d='docker'
+alias dc='docker compose'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+alias dpsa='docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.CreatedAt}}"'
+alias di='docker images'
+
+# QuestLab Containers Quick Access
+alias qdb='docker exec -it questlab_postgres bash'
+alias qbe='docker exec -it questlab_backend bash'
+alias qfe='docker exec -it questlab_nginx bash'
+
+# QuestLab Logs (Super Fast)
+alias logs='docker compose logs -f'
+alias logb='docker compose logs -f backend'
+alias logdb='docker compose logs -f postgres'
+alias logn='docker compose logs -f nginx'
+alias logall='docker compose logs -f --tail=100'
+
+# QuestLab Control
+alias qup='docker compose up -d'
+alias qdown='docker compose down'
+alias qrestart='docker compose restart'
+alias qrebuild='docker compose down && docker compose build --no-cache && docker compose up -d'
+alias qstatus='docker compose ps'
+
+# QuestLab HTTP mode
+alias qup-http='docker compose -f docker-compose-http.yml up -d'
+alias qdown-http='docker compose -f docker-compose-http.yml down'
+alias qrestart-http='docker compose -f docker-compose-http.yml restart'
+alias qstatus-http='docker compose -f docker-compose-http.yml ps'
+
+# Quick service restart
+alias restart-backend='docker compose restart backend'
+alias restart-nginx='docker compose restart nginx'
+alias restart-db='docker compose restart postgres'
+
+# Docker cleanup
+alias dclean='docker system prune -af --volumes'
+alias dclean-safe='docker system prune -f'
+alias dstop-all='docker stop $(docker ps -aq)'
+alias drm-all='docker rm $(docker ps -aq)'
+
+# Docker stats
+alias dstats='docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"'
+alias dspace='docker system df -v'
+
+# ============================================
+# 🗄️ DATABASE - POSTGRESQL
+# ============================================
+
+# Quick database access
+alias psql='docker exec -it questlab_postgres psql -U turtle_guide -d questlab_db'
+alias psqlshell='docker exec -it questlab_postgres bash'
+alias pgdump='docker exec questlab_postgres pg_dump -U turtle_guide questlab_db'
+
+# Database operations
+alias db-backup='docker exec questlab_postgres pg_dump -U turtle_guide questlab_db > backup_$(date +%Y%m%d_%H%M%S).sql'
+alias db-restore='function _dbrestore() { docker exec -i questlab_postgres psql -U turtle_guide -d questlab_db < "$1"; }; _dbrestore'
+
+# Seed data
+alias seed='docker exec -i questlab_postgres psql -v ON_ERROR_STOP=1 -U turtle_guide -d questlab_db < questlab_clean_seed.sql'
+alias load-seed='./load-seed-data.sh'
+
+# Quick queries
+alias list-users='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "SELECT id, username, email, role FROM users;"'
+alias list-lessons='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "SELECT id, title, subject, grade_level FROM lessons;"'
+alias count-users='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "SELECT role, COUNT(*) FROM users GROUP BY role;"'
+alias db-size='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "SELECT pg_size_pretty(pg_database_size(current_database()));"'
+
+# Table info
+alias show-tables='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "\dt"'
+alias describe-users='docker exec questlab_postgres psql -U turtle_guide -d questlab_db -c "\d users"'
+
+# ============================================
+# 🚀 QUESTLAB DEPLOYMENT
+# ============================================
+
+# Quick deployment
+alias deploy='./quick-start.sh'
+alias verify='./verify-deployment.sh'
+alias fix-db='./fix-database.sh'
+alias init-ssl='./init-ssl.sh'
+alias use-ssl='./use-existing-ssl.sh'
+
+# Health checks
+alias health='curl -s http://localhost:8000/health | jq'
+alias health-all='echo "Backend:" && curl -s http://localhost:8000/health && echo -e "\nFrontend:" && curl -s http://localhost/ -o /dev/null -w "HTTP %{http_code}\n"'
+
+# ============================================
+# 🌐 NETWORK & SYSTEM
+# ============================================
+
+# Network info
+alias myip='curl -s ifconfig.me'
+alias localip='hostname -I | awk "{print \$1}"'
+alias ports='sudo netstat -tulanp | grep LISTEN'
+alias check-port='function _cp() { sudo lsof -i :"$1"; }; _cp'
+alias kill-port='function _kp() { sudo lsof -ti:"$1" | xargs -r sudo kill -9; }; _kp'
+
+# Test connectivity
+alias ping-google='ping -c 4 8.8.8.8'
+alias test-dns='nslookup questlab.onan.shop'
+alias test-http='curl -I http://localhost'
+alias test-api='curl http://localhost:8000/health'
+
+# System resources
+alias cpu='top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk "{print 100 - \$1\"%\"}"'
+alias mem='free -h'
+alias disk='df -h'
+alias usage='du -sh */ | sort -h'
+
+# ============================================
+# 📝 GIT SHORTCUTS
+# ============================================
+
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add .'
+alias gc='git commit -m'
+alias gp='git push'
+alias gpull='git pull'
+alias gl='git log --oneline --graph --decorate --all'
+alias gd='git diff'
+alias gb='git branch'
+alias gco='git checkout'
+
+# QuestLab specific git
+alias gsave='git add . && git commit -m "Progress save - $(date +%Y-%m-%d)" && git push'
+alias gbackup='git add . && git commit -m "Backup - $(date +%Y-%m-%d_%H:%M:%S)" && git push'
+alias gquick='function _gq() { git add . && git commit -m "$1" && git push; }; _gq'
+
+# ============================================
+# 🐍 PYTHON & ENVIRONMENT
+# ============================================
+
+alias pa='source .venv/bin/activate'
+alias pd='deactivate'
+alias venv='python3 -m venv .venv'
+alias req='pip freeze > requirements.txt'
+alias install='pip install -r requirements.txt'
+alias py='python3'
+alias ipy='ipython'
+
+# ============================================
+# 🔍 SEARCH & FIND
+# ============================================
+
+# Find files and directories
+alias f='find . -name'
+alias ff='find . -type f -name'
+alias fd='find . -type d -name'
+
+# Search in files
+alias search='function _s() { grep -r "$1" .; }; _s'
+alias searchpy='function _sp() { grep -r "$1" --include="*.py"; }; _sp'
+alias searchjs='function _sj() { grep -r "$1" --include="*.js" --include="*.jsx"; }; _sj'
+
+# ============================================
+# ⚡ TMUX POWER SESSION
+# ============================================
+
+alias tmux='tmux -2'  # Force 256 colors
+alias t='tmux'
+alias ta='tmux attach -t'
+alias tl='tmux list-sessions'
+alias tn='tmux new -s'
+alias tk='tmux kill-session -t'
+
+# QuestLab tmux session
+alias questlab='tmux new -s questlab -A'
+alias qsession='tmux new-session -s questlab -d && tmux split-window -h && tmux split-window -v && tmux select-layout main-vertical && tmux attach -t questlab'
+
+# ============================================
+# 🎯 QUESTLAB QUICK COMMANDS
+# ============================================
+
+# View configuration
+alias show-env='cat .env | grep -v "^#" | grep .'
+alias show-config='echo -e "Database: $POSTGRES_DB\nUser: $POSTGRES_USER\nDomain: $DOMAIN"'
+
+# Quick fixes
+alias fix-perms='sudo chown -R $USER:$USER . && chmod +x *.sh'
+alias fix-firewall='sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw status'
+alias fix-ports='sudo lsof -ti:80 | xargs -r sudo kill -9 && sudo lsof -ti:443 | xargs -r sudo kill -9'
+
+# Monitoring
+alias watch-logs='watch -n 2 "docker compose logs --tail=50"'
+alias watch-status='watch -n 5 "docker compose ps"'
+alias watch-cpu='watch -n 2 "docker stats --no-stream"'
+
+# ============================================
+# 📊 QUESTLAB TUI MENU
+# ============================================
+
+# Launch the main TUI
+alias q-menu='questlab-menu'
+alias qmenu='questlab-menu'
+alias menu='questlab-menu'
+
+# ============================================
+# 💡 HELP SYSTEM
+# ============================================
+
+# Category help
+alias h-docker='echo -e "${CYAN}Docker Commands:${NC}\n  qup, qdown, qrestart, qrebuild, qstatus\n  logs, logb, logdb, logn\n  qdb, qbe, qfe"'
+alias h-db='echo -e "${CYAN}Database Commands:${NC}\n  psql, list-users, list-lessons\n  questlab_clean_seed.sql, load-seed, db-backup\n  show-tables, count-users"'
+alias h-deploy='echo -e "${CYAN}Deployment Commands:${NC}\n  deploy, verify, fix-db\n  init-ssl, use-ssl\n  health, health-all"'
+alias h-git='echo -e "${CYAN}Git Commands:${NC}\n  gs, ga, gc, gp\n  gsave, gbackup, gquick"'
+alias h-network='echo -e "${CYAN}Network Commands:${NC}\n  myip, localip, ports\n  check-port, kill-port\n  test-http, test-api"'
+
+# Master help
+alias qhelp='questlab-help'
+
+# ============================================
+# 🔧 UTILITY FUNCTIONS
+# ============================================
+
+# Create quick note
+qnote() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $*" >> ~/questlab/notes.txt
+    echo "Note saved!"
+}
+
+# View recent notes
+qnotes() {
+    tail -n ${1:-10} ~/questlab/notes.txt
+}
+
+# Quick backup
+qbackup() {
+    local backup_name="questlab_backup_$(date +%Y%m%d_%H%M%S)"
+    tar -czf ~/backups/${backup_name}.tar.gz \
+        --exclude='node_modules' \
+        --exclude='__pycache__' \
+        --exclude='.venv' \
+        ~/questlab/
+    echo "Backup created: ~/backups/${backup_name}.tar.gz"
+}
+
+# Watch a command continuously
+qwatch() {
+    watch -n ${2:-2} "$1"
+}
+
+# Follow log files
+qtail() {
+    tail -f ${1:-/var/log/syslog}
+}
+
+# ============================================
+# 🎨 CUSTOM PROMPT (Optional)
+# ============================================
+
+# Uncomment to enable custom prompt
+# export PS1='\[\033[01;32m\]🎓 QuestLab\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# ============================================
+# 🚀 STARTUP MESSAGE
+# ============================================
+
+echo -e "${CYAN}"
+echo "╔════════════════════════════════════════╗"
+echo "║  🎓 QuestLab Power Aliases Loaded! 🎓 ║"
+echo "╚════════════════════════════════════════╝"
+echo -e "${NC}"
+echo -e "${YELLOW}Quick Start:${NC}"
+echo "  Type ${GREEN}qmenu${NC} or ${GREEN}menu${NC} to launch the TUI"
+echo "  Type ${GREEN}qhelp${NC} to see all available commands"
+echo ""
+echo -e "${CYAN}Fast Commands:${NC}"
+echo "  ${GREEN}qup${NC}      - Start QuestLab"
+echo "  ${GREEN}logs${NC}     - View all logs"
+echo "  ${GREEN}psql${NC}     - Access database"
+echo "  ${GREEN}health${NC}   - Check backend health"
+echo ""

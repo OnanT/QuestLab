@@ -7,9 +7,9 @@ import { ArrowLeft, Clock, CheckCircle, XCircle, Trophy, Star, ChevronRight } fr
 import { toast } from "sonner";
 
 export default function QuizPlayerPage() {
-  const { quizId } = useParams();
+  const { quizId, lessonId } = useParams();
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { user } = useAuth();
   
   const [quiz, setQuiz] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -21,7 +21,7 @@ export default function QuizPlayerPage() {
 
   useEffect(() => {
     fetchQuiz();
-  }, [quizId]);
+  }, [quizId, lessonId]);
 
   useEffect(() => {
     if (quizState !== "playing" || timeLeft <= 0) return;
@@ -41,9 +41,41 @@ export default function QuizPlayerPage() {
 
   const fetchQuiz = async () => {
     try {
-      const res = await apiClient.get(`/quizzes/${quizId}`);
-      setQuiz(res.data);
-      setTimeLeft(res.data.time_limit);
+      let res;
+      let quizData;
+      
+      if (lessonId) {
+        // Fetch all quizzes for this lesson
+        res = await apiClient.get(`/quizzes/lesson/${lessonId}`);
+        const quizzes = res.data;
+        quizData = {
+          id: lessonId,
+          lesson_id: parseInt(lessonId),
+          title: quizzes[0].title,
+          time_limit: quizzes.reduce((sum, q) => sum + (q.time_limit || 0), 0) || 300, // default 5 mins
+          questions: quizzes.map(q => ({
+            id: q.id,
+            question_text: q.question,
+            options: q.options,
+            question_type: q.question_type,
+          }))
+        };
+      } else {
+        // Original single quiz behavior
+        res = await apiClient.get(`/quizzes/${quizId}`);
+        quizData = {
+          ...res.data,
+          questions: [{
+            id: res.data.id,
+            question_text: res.data.question,
+            options: res.data.options,
+            question_type: res.data.question_type,
+          }]
+        };
+      }
+      
+      setQuiz(quizData);
+      setTimeLeft(quizData.time_limit || 300);
       setQuizState("playing");
     } catch (error) {
       console.error("Failed to fetch quiz:", error);
@@ -62,16 +94,27 @@ export default function QuizPlayerPage() {
     
     setQuizState("submitting");
     try {
-      const res = await apiClient.post(`/quizzes/${quizId}/submit`, {
-        quiz_id: quizId,
-        answers: answers
-      });
+      let res;
+      if (lessonId) {
+        res = await apiClient.post(`/quizzes/lesson/${lessonId}/submit`, {
+          answers: answers
+        });
+      } else {
+        const quizIdInt = parseInt(quizId);
+        res = await apiClient.post(`/quizzes/${quizId}/submit`, {
+          quiz_id: quizIdInt,
+          user_answer: answers[quiz.questions[0].id] || null,
+          answers: answers
+        });
+      }
+      
       setResults(res.data);
       setQuizState("results");
       
-      // Update user points in context
       if (res.data.points_earned > 0) {
         toast.success(`+${res.data.points_earned} points earned!`);
+      } else if (res.data.passed) {
+        toast.success(`You passed the quiz!`);
       }
     } catch (error) {
       console.error("Failed to submit quiz:", error);
@@ -128,7 +171,7 @@ export default function QuizPlayerPage() {
             
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="p-4 bg-white rounded-xl shadow-sm">
-                <p className="text-3xl font-bold font-accent text-teal-600">{results.score}%</p>
+                <p className="text-3xl font-bold font-accent text-teal-600">{Math.round(results.score)}%</p>
                 <p className="text-sm text-slate-500">Score</p>
               </div>
               <div className="p-4 bg-white rounded-xl shadow-sm">
@@ -146,10 +189,11 @@ export default function QuizPlayerPage() {
           <div className="space-y-4 mb-8">
             <h2 className="text-xl font-bold font-heading text-slate-900">Question Review</h2>
             {results.results.map((result, index) => {
-              const question = quiz.questions[index];
+              const question = quiz.questions.find(q => q.id === result.question_id) || quiz.questions[index];
+              const userAnswer = result.user_answer || answers[question.id] || null;
               return (
                 <div 
-                  key={result.question_id}
+                  key={result.question_id || index}
                   className={`student-card p-4 border-l-4 ${result.is_correct ? "border-green-500" : "border-red-500"}`}
                 >
                   <div className="flex items-start gap-3">
@@ -164,18 +208,22 @@ export default function QuizPlayerPage() {
                       <p className="font-medium text-slate-900 mb-2">{question.question_text}</p>
                       <p className="text-sm">
                         <span className="text-slate-500">Your answer: </span>
-                        <span className={result.is_correct ? "text-green-600" : "text-red-600"}>
-                          {result.user_answer || "(No answer)"}
+                        <span className={result.is_correct ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                          {userAnswer || "(No answer)"}
                         </span>
                       </p>
                       {!result.is_correct && (
                         <p className="text-sm">
                           <span className="text-slate-500">Correct answer: </span>
-                          <span className="text-green-600">{result.correct_answer}</span>
+                          <span className="text-green-600 font-medium">
+                            {result.correct_answer}
+                          </span>
                         </p>
                       )}
                       {result.explanation && (
-                        <p className="text-sm text-slate-500 mt-2 italic">{result.explanation}</p>
+                        <p className="text-sm text-slate-600 mt-2 p-2 bg-blue-50 rounded italic">
+                          💡 {result.explanation}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -194,7 +242,7 @@ export default function QuizPlayerPage() {
               onClick={() => {
                 setAnswers({});
                 setCurrentQuestion(0);
-                setTimeLeft(quiz.time_limit);
+                setTimeLeft(quiz.time_limit || 300);
                 setResults(null);
                 setQuizState("playing");
               }}

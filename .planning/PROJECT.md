@@ -16,15 +16,25 @@ To provide engaging, game-first learning experiences that are culturally relevan
 
 ### Active
 
-- [ ] **AUTH-01**: User (student, teacher, admin) can create and manage an account.
-- [ ] **GAME-01**: Students can engage with learning content through interactive gameplay loops, mini-games, and narrative quests.
+- [ ] **AUTH-01**: User (student, teacher, admin) can create and manage an account, including secure authentication and authorization.
+- [ ] **LEARN-01**: Students can engage with learning content delivered as structured quests.
 - [ ] **CONT-01**: Learning content incorporates Caribbean history, geography, folklore, heroes, and environments.
 - [ ] **CURR-01**: Curriculum lessons are aligned with Grades 1-6 educational standards.
-- [ ] **FEED-01**: Students receive immediate feedback through game mechanics (XP, unlocks, retries).
-- [ ] **PROG-01**: Student progression is driven by mastery and participation, not solely test scores.
-- [ ] **TEACH-01**: Teachers can assign quests/lessons and view student progress.
+- [ ] **FEED-01**: Students receive immediate feedback through quizzes and interactive elements.
+- [ ] **PROG-01**: Student progression is tracked based on mastery and participation.
+- [ ] **PROG-02**: Mastery indicators are displayed for topics and quests.
+- [ ] **PROG-03**: Time-on-task and attempt metrics are collected for detailed insights.
 - [ ] **ADMIN-01**: Schools/administrators can access centralized dashboards for student progress and curriculum organization.
+- [ ] **ADMIN-02**: Admin/Teachers can create, edit, and organize lessons, quizzes, and games (Content Management).
+- [ ] **ADMIN-03**: Admin can configure school, grade, and subject structures.
+- [ ] **ADMIN-04**: Teachers/Admins can view detailed student activity and performance.
 - [ ] **UIX-01**: The platform features UI, navigation, rewards, and story elements designed to feel like an adventure game.
+- [ ] **GAME-01**: Students can engage with learning content through interactive gameplay loops.
+- [ ] **GAME-02**: Mini-games reinforcing lesson objectives are integrated into learning paths.
+- [ ] **GAME-03**: Story hooks and contextual challenges are embedded to drive narrative immersion.
+- [ ] **GAME-04**: XP and level progression systems provide visible achievement and encourage engagement.
+- [ ] **GAME-05**: Achievements and badges are awarded for milestones and effort.
+- [ ] **GAME-06**: In-game currency and unlockables are available for learners to customize their experience.
 
 ### Out of Scope
 
@@ -56,3 +66,27 @@ To provide engaging, game-first learning experiences that are culturally relevan
 
 ---
 *Last updated: February 4, 2026 after initialization*
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUTH-01 | Phase 1 | Pending |
+| LEARN-01 | Phase 1 | Pending |
+| CONT-01 | Phase 1 | Pending |
+| CURR-01 | Phase 1 | Pending |
+| FEED-01 | Phase 1 | Pending |
+| PROG-01 | Phase 1 | Pending |
+| PROG-02 | Phase 1 | Pending |
+| PROG-03 | Phase 2 | Pending |
+| ADMIN-01 | Phase 2 | Pending |
+| ADMIN-02 | Phase 1 | Pending |
+| ADMIN-03 | Phase 1 | Pending |
+| ADMIN-04 | Phase 2 | Pending |
+| UIX-01 | Phase 1 | Pending |
+| GAME-01 | Phase 2 | Pending |
+| GAME-02 | Phase 3 | Pending |
+| GAME-03 | Phase 2 | Pending |
+| GAME-04 | Phase 2 | Pending |
+| GAME-05 | Phase 2 | Pending |
+| GAME-06 | Phase 3 | Pending |

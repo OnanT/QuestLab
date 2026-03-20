@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiClient } from "../App";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { HelpCircle, Clock, Star, ArrowLeft, Filter, CheckCircle } from "lucide-react";
+import { HelpCircle, Clock, Star, ArrowLeft, Filter, CheckCircle, ListChecks } from "lucide-react";
 import StudentNav from "./StudentNav";
 
 export default function QuizzesPage() {
@@ -40,6 +40,30 @@ export default function QuizzesPage() {
       setLoading(false);
     }
   };
+
+  const groupedQuizzes = useMemo(() => {
+    const groups = {};
+    quizzes.forEach(quiz => {
+      const lessonId = quiz.lesson_id;
+      if (!groups[lessonId]) {
+        groups[lessonId] = {
+          lesson_id: lessonId,
+          title: quiz.title || "Untitled Quiz",
+          difficulty: quiz.difficulty,
+          subject_name: quiz.subject_name,
+          total_points: 0,
+          question_count: 0,
+          time_limit: 0,
+          questions: []
+        };
+      }
+      groups[lessonId].questions.push(quiz);
+      groups[lessonId].total_points += quiz.points;
+      groups[lessonId].question_count += 1;
+      groups[lessonId].time_limit += (quiz.time_limit || 0);
+    });
+    return Object.values(groups);
+  }, [quizzes]);
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value === "all" ? "" : value };
@@ -131,7 +155,7 @@ export default function QuizzesPage() {
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent"></div>
           </div>
-        ) : quizzes.length === 0 ? (
+        ) : groupedQuizzes.length === 0 ? (
           <div className="text-center py-12">
             <HelpCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-700 mb-2">No quizzes found</h3>
@@ -139,56 +163,54 @@ export default function QuizzesPage() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quizzes.map((quiz) => (
+            {groupedQuizzes.map((quizGroup) => (
               <Link
-                key={quiz.id}
-                to={`/quizzes/${quiz.id}`}
+                key={quizGroup.lesson_id}
+                to={`/quizzes/lesson/${quizGroup.lesson_id}`}
                 className="student-card p-6 group"
-                data-testid={`quiz-card-${quiz.id}`}
+                data-testid={`quiz-card-${quizGroup.lesson_id}`}
               >
                 <div className="flex items-start gap-4 mb-4">
                   <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ 
-                      backgroundColor: subjects.find(s => s.id === quiz.subject_id)?.color + "20" || "#FF7F5020"
-                    }}
+                    className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0"
                   >
                     <HelpCircle 
-                      className="w-6 h-6"
-                      style={{ color: subjects.find(s => s.id === quiz.subject_id)?.color || "#FF7F50" }}
+                      className="w-6 h-6 text-orange-600"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
-                      {quiz.subject_name}
+                      {quizGroup.subject_name || "General"}
                     </p>
-                    <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors truncate">
-                      {quiz.title}
+                    <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors line-clamp-2">
+                      {quizGroup.title}
                     </h3>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 mb-3">
                   <span className="flex items-center gap-1 text-sm text-slate-500">
-                    <CheckCircle className="w-4 h-4" />
-                    {quiz.questions?.length || 0} questions
+                    <ListChecks className="w-4 h-4" />
+                    {quizGroup.question_count} questions
                   </span>
-                  <span className="flex items-center gap-1 text-sm text-slate-500">
-                    <Clock className="w-4 h-4" />
-                    {formatTime(quiz.time_limit)}
-                  </span>
+                  {quizGroup.time_limit > 0 && (
+                    <span className="flex items-center gap-1 text-sm text-slate-500">
+                      <Clock className="w-4 h-4" />
+                      {formatTime(quizGroup.time_limit)}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(quiz.difficulty)}`}>
-                    {quiz.difficulty}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getDifficultyColor(quizGroup.difficulty)}`}>
+                    {quizGroup.difficulty}
                   </span>
-                  <span className="points-badge text-xs">+{quiz.total_points} pts</span>
+                  <span className="points-badge text-xs">+{quizGroup.total_points} pts</span>
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-slate-100">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Pass score: {quiz.pass_score}%</span>
+                    <span className="text-slate-500">Lesson #{quizGroup.lesson_id}</span>
                     <span className="text-teal-600 font-medium group-hover:underline">Start Quiz →</span>
                   </div>
                 </div>

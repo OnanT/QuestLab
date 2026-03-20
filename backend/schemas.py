@@ -1,179 +1,185 @@
-# schemas.py
-# Consolidated Pydantic models for the Island Quest Lab API
-# -------------------------------------------------------
-# All models are compatible with the ORM classes defined in models.py.
-# Import this file wherever you need request or response bodies.
-
-from __future__ import annotations
-
+"""
+Pydantic Schemas for Request/Response Validation
+Type-safe data validation and serialization
+"""
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Optional, List
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from enum import Enum
+from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+# ============================================================================
+# ENUMS
+# ============================================================================
+
+class UserRole(str, Enum):
+    STUDENT = "student"
+    PARENT = "parent"
+    TEACHER = "teacher"
+    ADMIN = "admin"
+    GUEST = "guest"
 
 
-# ----------------------------------------------------------------------
+class Difficulty(str, Enum):
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+
+
+# ============================================================================
 # USER SCHEMAS
-# ----------------------------------------------------------------------
-class UserCreate(BaseModel):
-    username: str
+# ============================================================================
+
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=150)
     email: EmailStr
+    role: UserRole
+    country: Optional[str] = None
+    school: Optional[str] = None
+    grade: Optional[int] = None
+
+
+class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
-    role: str
     parent_id: Optional[int] = None
+
+    @field_validator('password', mode='before')
+    @classmethod
+    def password_strength(cls, v):
+        """Validate password strength requirements."""
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters')
+        return v
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
+    display_name: Optional[str] = None
     avatar: Optional[str] = None
-    level: Optional[str] = None
-    streak: Optional[int] = None
+    email: Optional[EmailStr] = None
+    country: Optional[str] = None
+    school: Optional[str] = None
+    grade: Optional[int] = None
+
+    class Config:
+        orm_mode = True
 
 
 class UserOut(BaseModel):
     id: int
+    uuid: UUID
     username: str
-    email: EmailStr
+    email: str
+    display_name: Optional[str]
     role: str
-    avatar: str
+    avatar: Optional[str]
     points: int
     level: int
+    badges: List[str] = []
     streak: int
-    parent_id: Optional[int] = None
+    country: Optional[str]
+    school: Optional[str]
+    grade: Optional[int]
+    parent_id: Optional[int]
+    is_active: bool
     created_at: datetime
 
+    @field_validator('badges', mode='before')
+    @classmethod
+    def parse_badges(cls, v):
+        if isinstance(v, str):
+            return [b.strip() for b in v.split(',') if b.strip()]
+        return v or []
+
     class Config:
+        orm_mode = True
         from_attributes = True
 
+
+# ============================================================================
+# AUTH SCHEMAS
+# ============================================================================
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
 
 
-# ----------------------------------------------------------------------
-# ISLAND / COUNTRY SCHEMAS
-# ----------------------------------------------------------------------
-class CountryCreate(BaseModel):
-    name: str
-    flag_emoji: str = "🏝️"
+class TokenData(BaseModel):
+    username: Optional[str] = None
+    role: Optional[str] = None
 
 
-class CountryOut(BaseModel):
-    id: int
-    name: str
-    flag_emoji: str = "🏝️"
-
-    class Config:
-        from_attributes = True
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
 
 
-# ----------------------------------------------------------------------
-# SCHOOL SCHEMAS
-# ----------------------------------------------------------------------
-class SchoolCreate(BaseModel):
-    name: str
-    island_id: Optional[int] = None
-    address: Optional[str] = ""
+class PasswordResetVerify(BaseModel):
+    email: EmailStr
+    otp_code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=6)
 
 
-class SchoolUpdate(BaseModel):
-    name: Optional[str] = None
-    island_id: Optional[int] = None
-    address: Optional[str] = None
-
-
-class SchoolOut(BaseModel):
-    id: int
-    name: str
-    island_id: Optional[int] = None
-    address: Optional[str] = ""
-
-    class Config:
-        from_attributes = True
-
-
-# ----------------------------------------------------------------------
-# SUBJECT SCHEMAS
-# ----------------------------------------------------------------------
-class SubjectCreate(BaseModel):
-    name: str
-
-
-class SubjectUpdate(BaseModel):
-    name: Optional[str] = None
-
-
-class SubjectOut(BaseModel):
-    id: int
-    name: str
-
-    class Config:
-        from_attributes = True
-
-
-class SubjectOutEnhanced(BaseModel):
-    id: int
-    name: str
-    color: str
-    icon: str
-
-    class Config:
-        from_attributes = True
-
-
-# ----------------------------------------------------------------------
+# ============================================================================
 # LESSON SCHEMAS
-# ----------------------------------------------------------------------
-class LessonCreate(BaseModel):
-    concept_id: Optional[int] = None
-    title: str
+# ============================================================================
+
+class LessonBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=150)
     content_html: str
     category: str = "General"
-    difficulty: str = "beginner"
+    difficulty: Difficulty = Difficulty.BEGINNER
     estimated_time: int = 30
     points: int = 50
-    grade_levels: Optional[List[str]] = None
+    points_possible: int = 100
     description: str = ""
     objectives: str = ""
     prerequisites: str = ""
-    tags: Optional[List[str]] = None
+    tags: List[str] = [] # Changed from str to List[str]
+
+
+class LessonCreate(LessonBase):
+    concept_id: Optional[int] = None
+    grade_levels: List[str] = [] # Added
 
 
 class LessonUpdate(BaseModel):
-    concept_id: Optional[int] = None
     title: Optional[str] = None
     content_html: Optional[str] = None
     category: Optional[str] = None
-    difficulty: Optional[str] = None
+    difficulty: Optional[Difficulty] = None
     estimated_time: Optional[int] = None
     points: Optional[int] = None
-    grade_levels: Optional[List[str]] = None
     description: Optional[str] = None
     objectives: Optional[str] = None
     prerequisites: Optional[str] = None
     tags: Optional[List[str]] = None
+    grade_levels: Optional[List[str]] = None
+    is_published: Optional[bool] = None
+    is_featured: Optional[bool] = None
 
 
-class LessonOut(BaseModel):
+class LessonOut(LessonBase):
     id: int
-    concept_id: Optional[int] = None
-    title: str
-    content_html: str
-    creator_id: Optional[int] = None
+    uuid: UUID # Changed from str to UUID
+    creator_id: Optional[int]
+    is_published: bool
+    is_featured: bool
+    view_count: int
+    completion_count: int
     created_at: datetime
+    grade_levels: List[str] = [] # Added
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
 class LessonOutEnhanced(BaseModel):
     id: int
-    concept_id: Optional[int] = None
+    concept_id: Optional[int]
     title: str
     content_html: str
-    creator_id: Optional[int] = None
+    creator_id: Optional[int]
     created_at: datetime
     category: str
     difficulty: str
@@ -189,105 +195,69 @@ class LessonOutEnhanced(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ----------------------------------------------------------------------
-# GAME SCHEMAS
-# ----------------------------------------------------------------------
-class GameCreate(BaseModel):
-    lesson_id: Optional[int] = None
-    game_engine_id: Optional[int] = None
-    config_json: Dict[str, Any]
-
-
-class GameUpdate(BaseModel):
-    lesson_id: Optional[int] = None
-    game_engine_id: Optional[int] = None
-    config_json: Optional[Dict[str, Any]] = None
-
-
-class GameOut(BaseModel):
-    id: int
-    lesson_id: Optional[int] = None
-    game_engine_id: Optional[int] = None
-    game_type: str  # Added game_type
-    title: str       # Added title
-    points: int      # Added points
-    difficulty: str  # Added difficulty
-    subject_name: Optional[str] = None # Added subject_name
-    config_json: Dict[str, Any]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# ----------------------------------------------------------------------
+# ============================================================================
 # QUIZ SCHEMAS
-# ----------------------------------------------------------------------
-class QuizCreate(BaseModel):
-    lesson_id: Optional[int] = None
+# ============================================================================
+
+
+class QuizBase(BaseModel):
     question: str
     question_type: str = "mc_single"
-    options: List[str]
+    options: List[str] # Changed from str to List[str]
     correct_answer: str
     explanation: str = ""
     points: int = 10
-    difficulty: str = "beginner"
+    difficulty: Difficulty = Difficulty.BEGINNER
     time_limit: int = 0
     image_url: str = ""
     audio_url: str = ""
     tags: List[str] = []
 
 
-class QuizOut(BaseModel):
-    id: int
+class QuizCreate(QuizBase):
     lesson_id: Optional[int] = None
-    question: str
-    question_type: str
-    options: List[str]
-    correct_answer: str
-    explanation: str
-    points: int
-    difficulty: str
-    time_limit: int
-    image_url: Optional[str] = None
-    audio_url: Optional[str] = None
-    tags: List[str]
-
-    class Config:
-        from_attributes = True
-
-
-class QuizOutEnhanced(QuizOut):
-    title: str
-    subject_id: Optional[int] = None
-    subject_name: str
-    total_points: int
-    pass_score: int
-
-    class Config:
-        from_attributes = True
-
-
-# Helper models for bulk quiz creation
-class QuizBulkItem(BaseModel):
-    question: str
-    question_type: str = "mc_single"
-    options: List[str]
-    correct_answer: str
-    explanation: str = ""
-    points: int = 10
-    difficulty: str = "beginner"
 
 
 class QuizBulkCreate(BaseModel):
-    lesson_id: int
-    quizzes: List[QuizBulkItem]
+    lesson_id: Optional[int] = None
+    quizzes: List[QuizBase]
+
+
+class QuizOut(QuizBase):
+    id: int
+    lesson_id: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+class QuizOutEnhanced(BaseModel):
+    id: int
+    lesson_id: Optional[int] = None
+    title: str
+    question: str
+    question_type: str
+    options: List[str] # Changed from str to List[str]
+    correct_answer: str
+    explanation: Optional[str] = ""
+    points: int
+    difficulty: str
+    time_limit: Optional[int] = None
+    image_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    tags: List[str] = [] # Changed from Optional[str] to List[str]
+    subject_id: Optional[int] = None
+    subject_name: Optional[str] = "Uncategorized"
+    total_points: int
+    pass_score: int = 70
+
+    class Config:
+        from_attributes = True
 
 
 class QuizSubmission(BaseModel):
-    quiz_id: int
-    answers: Dict[int, str]
+    answers: dict
 
 
 class QuizResult(BaseModel):
@@ -296,37 +266,41 @@ class QuizResult(BaseModel):
     passed: bool
     correct: int
     total: int
-    results: List[Dict]
+    results: List[dict]
 
 
-# ----------------------------------------------------------------------
+# ============================================================================
 # PROGRESS SCHEMAS
-# ----------------------------------------------------------------------
+# ============================================================================
+
 class ProgressCreate(BaseModel):
-    user_id: Optional[int] = None
-    lesson_id: Optional[int] = None
+    lesson_id: int
     score: Optional[int] = None
     completed: bool = False
+    total_time_spent_seconds: int = 0
 
 
 class ProgressOut(BaseModel):
     id: int
-    user_id: Optional[int] = None
-    lesson_id: Optional[int] = None
-    score: Optional[int] = None
+    user_id: int
+    lesson_id: int
+    score: Optional[int]
     completed: bool
-    completed_at: Optional[datetime] = None
+    completed_at: Optional[datetime]
+    total_time_spent_seconds: int
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
-# ----------------------------------------------------------------------
+# ============================================================================
 # REWARD SCHEMAS
-# ----------------------------------------------------------------------
+# ============================================================================
+
 class RewardCreate(BaseModel):
-    name: str
-    points_required: int
+    name: str = Field(..., min_length=1, max_length=150)
+    points_required: int = Field(..., gt=0)
     for_user_id: Optional[int] = None
 
 
@@ -334,105 +308,210 @@ class RewardOut(BaseModel):
     id: int
     name: str
     points_required: int
-    creator_id: Optional[int] = None
-    for_user_id: Optional[int] = None
+    creator_id: Optional[int]
+    for_user_id: Optional[int]
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
-# ----------------------------------------------------------------------
-# LEADERBOARD SCHEMAS
-# ----------------------------------------------------------------------
-class LeaderboardEntry(BaseModel):
-    rank: int
-    user_id: int
-    username: str
-    display_name: str # Frontend expects this
-    points: int
-    level: str
-    avatar: str
-    role: str
-    badges: List[str] # Frontend expects this
 
-    class Config:
-        from_attributes = True
+# ============================================================================
+# SUBJECT SCHEMAS
+# ============================================================================
 
-# ----------------------------------------------------------------------
-# BADGE SCHEMAS
-# ----------------------------------------------------------------------
-class BadgeOut(BaseModel):
-    id: str
+class SubjectCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class SubjectOut(BaseModel):
+    id: int
     name: str
-    description: str
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+class SubjectOutEnhanced(BaseModel):
+    id: int
+    name: str
     color: str
-    points_reward: int = 0
-    icon: Optional[str] = None # Or an icon identifier
+    icon: str
 
     class Config:
         from_attributes = True
 
 
-# ----------------------------------------------------------------------
-# TEMPLATE SCHEMA (used by the /templates endpoint)
-# ----------------------------------------------------------------------
+# ============================================================================
+# COUNTRY/ISLAND SCHEMAS
+# ============================================================================
+
+class CountryCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class CountryOut(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+# ============================================================================
+# SCHOOL SCHEMAS
+# ============================================================================
+
+class SchoolCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    island_id: Optional[int] = None
+    address: Optional[str] = None
+
+
+class SchoolOut(BaseModel):
+    id: int
+    name: str
+    island_id: Optional[int]
+    address: Optional[str]
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+# ============================================================================
+# GAME SCHEMAS
+# ============================================================================
+
+class GameCreate(BaseModel):
+    lesson_id: int
+    game_engine_id: int
+    config_json: dict
+
+
+class GameOut(BaseModel):
+    id: int
+    lesson_id: int
+    game_engine_id: int
+    game_type: Optional[str] = None
+    title: Optional[str] = None
+    points: Optional[int] = 10
+    difficulty: Optional[str] = "medium"
+    subject_name: Optional[str] = None
+    config_json: dict
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
+
+class GameSubmission(BaseModel):
+    game_id: int
+    score: int
+    time_taken: int
+    data: Optional[dict] = None
+
+
+class GameResult(BaseModel):
+    game_id: int
+    score: int
+    points_earned: int
+    new_total_points: int
+
+
+# ============================================================================
+# TEMPLATE SCHEMAS (for content creation)
+# ============================================================================
+
 class TemplateCreate(BaseModel):
     name: str
-    description: str = ""
-    lesson_data: dict
-    questions: List[dict]
-    tags: List[str] = []
-    is_public: bool = False
+    template_type: str
+    content: dict
 
 
-# ----------------------------------------------------------------------
-# ANY OTHER SMALL HELPERS
-# ----------------------------------------------------------------------
-# (If you add more endpoints later, just drop the corresponding
-#  Pydantic model here.)
-
-# ----------------------------------------------------------------------
+# ============================================================================
 # ASSIGNMENT SCHEMAS
-# ----------------------------------------------------------------------
+# ============================================================================
+
 class AssignmentCreate(BaseModel):
     student_id: int
     parent_id: Optional[int] = None
     teacher_id: Optional[int] = None
 
-class AssignmentUpdate(BaseModel):
-    student_id: Optional[int] = None
-    parent_id: Optional[int] = None
-    teacher_id: Optional[int] = None
 
 class AssignmentOut(BaseModel):
     id: int
     student_id: int
-    parent_id: Optional[int] = None
-    teacher_id: Optional[int] = None
-    created_at: datetime
-    student_name: str
+    parent_id: Optional[int]
+    teacher_id: Optional[int]
+    student_name: Optional[str] = None
     parent_name: Optional[str] = None
     teacher_name: Optional[str] = None
+    created_at: datetime
 
     class Config:
+        orm_mode = True
         from_attributes = True
-# ----------------------------------------------------------------------
+
+
+# ============================================================================
 # FEEDBACK SCHEMAS
-# ----------------------------------------------------------------------
-class FeedbackBase(BaseModel):
-    user_id: int
-    lesson_id: int
-    rating: int # e.g., 1-5
+# ============================================================================
+
+class FeedbackCreate(BaseModel):
+    lesson_id: Optional[int] = None
+    rating: int = Field(..., ge=1, le=5)
     comment: Optional[str] = None
 
 
-class FeedbackCreate(FeedbackBase):
-    pass
-
-
-class FeedbackOut(FeedbackBase):
+class FeedbackOut(BaseModel):
     id: int
+    user_id: int
+    lesson_id: Optional[int]
+    rating: int
+    comment: Optional[str]
     created_at: datetime
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
+
+# ============================================================================
+# BADGE SCHEMAS
+# ============================================================================
+
+class BadgeOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    color: str
+    points_reward: int
+    icon: str
+
+
+# ============================================================================
+# LEADERBOARD SCHEMAS
+# ============================================================================
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    user_id: int
+    username: str
+    display_name: str
+    points: int
+    level: str # or int
+    avatar: str
+    role: str
+    badges: List[str]
+
+    @field_validator('badges', mode='before')
+    @classmethod
+    def parse_badges(cls, v):
+        if isinstance(v, str):
+            return [b.strip() for b in v.split(',') if b.strip()]
+        return v or []

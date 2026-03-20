@@ -1,5 +1,5 @@
 // frontend/src/App.tsx
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { Toaster } from "sonner";
@@ -9,7 +9,10 @@ import { toast } from "sonner";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import StudentDashboard from "./pages/StudentDashboard";
+import ProfilePage from "./pages/ProfilePage";
 import LessonsPage from "./pages/LessonsPage";
 import LessonViewPage from "./pages/LessonsViewPage";
 import QuizzesPage from "./pages/QuizzesPage";
@@ -21,6 +24,8 @@ import AchievementsPage from "./pages/AchievementsPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import ParentDashboard from "./pages/ParentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import FeedbackPage from "./pages/FeedbackPage";
+import FeedbackFAB from "./components/FeedbackFAB";
 
 import "./App.css";
 
@@ -28,10 +33,23 @@ const BACKEND_URL = import.meta.env.VITE_API_URL || "/api";
 
 // ==================== Auth Context ====================
 interface AuthContextType {
-  user: { username: string; role: string; [key: string]: unknown } | null;
+  user: { 
+    id: number;
+    username: string; 
+    role: string; 
+    points: number; 
+    level: number; 
+    avatar: string; 
+    display_name?: string; 
+    country?: string;
+    school?: string;
+    grade?: number;
+    [key: string]: unknown 
+  } | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<unknown>;
   register: (userData: unknown) => Promise<unknown>;
+  updateUser: (data: any) => void;
   logout: () => void;
 }
 
@@ -144,8 +162,16 @@ const login = async (username: string, password: string) => {
     toast.success("Logged out successfully");
   };
 
+  const updateUser = useCallback((data: any) => {
+    setUser(prevUser => {
+      const newUser = { ...prevUser, ...data } as AuthContextType["user"];
+      localStorage.setItem("questlab_user", JSON.stringify(newUser));
+      return newUser;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -200,17 +226,22 @@ function AppRouter() {
       <Route path="/" element={user ? <Navigate to={getDefaultRoute()} /> : <LandingPage />} />
       <Route path="/login" element={user ? <Navigate to={getDefaultRoute()} /> : <LoginPage />} />
       <Route path="/register" element={user ? <Navigate to={getDefaultRoute()} /> : <RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Student */}
       <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonsPage /></ProtectedRoute>} />
       <Route path="/lessons/:lessonId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonViewPage /></ProtectedRoute>} />
       <Route path="/quizzes" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><QuizzesPage /></ProtectedRoute>} />
       <Route path="/quizzes/:quizId" element={<ProtectedRoute allowedRoles={["student"]}><QuizPlayerPage /></ProtectedRoute>} />
+      <Route path="/quizzes/lesson/:lessonId" element={<ProtectedRoute allowedRoles={["student"]}><QuizPlayerPage /></ProtectedRoute>} />
       <Route path="/games" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><GamesPage /></ProtectedRoute>} />
       <Route path="/games/:gameId" element={<ProtectedRoute allowedRoles={["student"]}><GamePlayerPage /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><LeaderboardPage /></ProtectedRoute>} />
       <Route path="/achievements" element={<ProtectedRoute allowedRoles={["student"]}><AchievementsPage /></ProtectedRoute>} />
+      <Route path="/feedback" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><FeedbackPage /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/admin/*" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
@@ -231,6 +262,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Toaster position="top-center" richColors />
+        <FeedbackFAB />
         <AppRouter />
       </AuthProvider>
     </BrowserRouter>
