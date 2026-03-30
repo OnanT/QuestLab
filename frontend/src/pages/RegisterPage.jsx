@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
 import { Button } from "../components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
+import axios from "axios";
 import { 
   User, Mail, Lock, Eye, EyeOff, School, Users, MapPin, GraduationCap,
   ArrowLeft, ShieldCheck, Sparkles, UserCircle, ChevronRight
@@ -25,8 +26,42 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [countries, setCountries] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [selectedCountryId, setSelectedCountryId] = useState(null);
+  
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch countries on mount
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const response = await axios.get("/api/country");
+        setCountries(response.data);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+      }
+    };
+    fetchCountries();
+  }, []);
+
+  // Fetch schools when country changes
+  useEffect(() => {
+    if (!selectedCountryId) {
+      setSchools([]);
+      return;
+    }
+    const fetchSchools = async () => {
+      try {
+        const response = await axios.get(`/api/schools?island_id=${selectedCountryId}`);
+        setSchools(response.data);
+      } catch (error) {
+        console.error("Error fetching schools:", error);
+      }
+    };
+    fetchSchools();
+  }, [selectedCountryId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,6 +74,16 @@ export default function RegisterPage() {
       role: value,
       parentId: value !== "student" ? "" : prev.parentId
     }));
+  };
+
+  const handleCountryChange = (value) => {
+    const country = countries.find(c => c.name === value);
+    setFormData(prev => ({ ...prev, country: value, school: "" }));
+    setSelectedCountryId(country?.id || null);
+  };
+
+  const handleSchoolChange = (value) => {
+    setFormData(prev => ({ ...prev, school: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -211,20 +256,22 @@ export default function RegisterPage() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Country (Optional)</Label>
-                <div className="relative group">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
-                  <Input
-                    name="country"
-                    value={formData.country}
-                    onChange={handleChange}
-                    className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
-                    placeholder="e.g. St. Kitts"
-                  />
-                </div>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Country</Label>
+                <Select value={formData.country} onValueChange={handleCountryChange}>
+                  <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-medium text-sm">
+                    <SelectValue placeholder="Select Country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c) => (
+                      <SelectItem key={c.id} value={c.name} className="font-bold text-slate-700">
+                        {c.flag_emoji} {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grade (Optional)</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grade</Label>
                 <div className="relative group">
                   <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                   <Input
@@ -240,17 +287,23 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">School (Optional)</Label>
-              <div className="relative group">
-                <School className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
-                <Input
-                  name="school"
-                  value={formData.school}
-                  onChange={handleChange}
-                  className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium text-sm"
-                  placeholder="School name"
-                />
-              </div>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">School</Label>
+              <Select 
+                value={formData.school} 
+                onValueChange={handleSchoolChange}
+                disabled={!formData.country || schools.length === 0}
+              >
+                <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-medium text-sm">
+                  <SelectValue placeholder={!formData.country ? "Select Country First" : (schools.length === 0 ? "No Schools Found" : "Select School")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {schools.map((s) => (
+                    <SelectItem key={s.id} value={s.name} className="font-bold text-slate-700">
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {formData.role === "student" && (

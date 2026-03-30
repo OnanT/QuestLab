@@ -6,8 +6,18 @@ import { Input } from "../components/ui/input";
 import { Progress } from "../components/ui/progress";
 import { ArrowLeft, Clock, Star, Trophy, ChevronRight, CheckCircle, XCircle, MapPin, Search } from "lucide-react";
 import { toast } from "sonner";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import SkillBuilder from "../components/games/SkillBuilder";
+import QuizBattle from "../components/games/QuizBattle";
+import StoryQuest from "../components/games/StoryQuest";
+import MapChallenge from "../components/games/MapChallenge";
+import MemoryMatch from "../components/games/MemoryMatch";
+import SentenceBuilder from "../components/games/SentenceBuilder";
+import BucketSort from "../components/games/BucketSort";
+import FillInBlanks from "../components/games/FillInBlanks";
+import DragAndDrop from "../components/games/DragAndDrop";
+import InteractiveSimulation from "../components/games/InteractiveSimulation";
+import TypingGame from "../components/games/TypingGame/TypingGame";
 
 // Fix for Leaflet default marker icons
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -45,7 +55,8 @@ export default function GamePlayerPage() {
     if (gameState !== "playing" || !game) return;
     
     // Timer for timed games
-    if (game.game_type === "quiz_battle" || game.game_type === "skill_builder") {
+    const gType = game.game_type?.toLowerCase();
+    if (gType === "quiz_battle" || gType === "skill_builder") {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -84,21 +95,47 @@ export default function GamePlayerPage() {
     setFeedback(null);
     setUserAnswer("");
     
-    if (gameData.game_type === "quiz_battle") {
+    const gameType = gameData.game_type?.toLowerCase();
+    
+    if (gameType === "quiz_battle") {
       setTimeLeft(gameData.config.time_limit || 60);
-    } else if (gameData.game_type === "skill_builder") {
+    } else if (gameType === "skill_builder") {
       setTimeLeft((gameData.config.time_per_problem || 15) * (gameData.config.total_problems || 8));
-    } else if (gameData.game_type === "story_quest") {
+    } else if (gameType === "story_quest") {
       setStoryPath(["start"]);
-    } else if (gameData.game_type === "map_challenge") {
+    } else if (gameType === "map_challenge") {
       setTimeLeft(gameData.config.time_limit || 120);
+    } else if (gameType === "memorymatch") {
+      setTimeLeft(gameData.config.time_limit || 120);
+    } else if (gameType === "sentencebuilder") {
+      setTimeLeft(gameData.config.time_limit || 120);
+    } else if (gameType === "bucketsort") {
+      setTimeLeft(gameData.config.time_limit || 120);
+    } else if (gameType === "fill in the blanks") {
+      setTimeLeft(gameData.config.time_limit || 180);
+    } else if (gameType === "drag and drop") {
+      setTimeLeft(gameData.config.time_limit || 180);
+    } else if (gameType === "typing") {
+      setTimeLeft(gameData.config.timeLimit || 60);
     }
     
     setGameState("playing");
   };
 
-  const handleGameEnd = async () => {
+  const handleGameEnd = async (stats = null) => {
     setGameState("finished");
+    
+    // Typing game handles its own submission to award shells and calculate complex stats
+    if (stats && game.game_type?.toLowerCase() === "typing") {
+        // TypingGame component already called the API, we just update local results for UI
+        setResults({
+            score: stats.score,
+            points_earned: stats.shells_awarded || 0,
+            time_taken: Math.floor((Date.now() - startTime) / 1000)
+        });
+        return;
+    }
+
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     const finalScore = score + bonusPoints;
     
@@ -190,13 +227,6 @@ export default function GamePlayerPage() {
   // Map Challenge Logic
   const [mapGuesses, setMapGuesses] = useState([]);
   
-  const MapEvents = ({ onMapClick }) => {
-    useMapEvents({
-      click: (e) => onMapClick(e),
-    });
-    return null;
-  };
-
   const processMapGuess = (coords) => {
     if (gameState !== "playing") return;
     
@@ -304,6 +334,8 @@ export default function GamePlayerPage() {
   }
 
   // Render game based on type
+  const gameType = game.game_type?.toLowerCase();
+
   return (
     <div className="min-h-screen bg-[#FFFDF5] py-8 px-4" data-testid="game-player">
       <div className="max-w-2xl mx-auto">
@@ -321,7 +353,7 @@ export default function GamePlayerPage() {
               <Star className="w-4 h-4 text-amber-600" />
               <span className="font-accent font-semibold text-amber-700">{score}</span>
             </div>
-            {(game.game_type === "quiz_battle" || game.game_type === "skill_builder" || game.game_type === "map_challenge") && (
+            {(gameType === "quiz_battle" || gameType === "skill_builder" || gameType === "map_challenge") && (
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${timeLeft < 30 ? "bg-red-100 text-red-600" : "bg-teal-100 text-teal-600"}`}>
                 <Clock className="w-4 h-4" />
                 <span className="font-accent font-semibold">{formatTime(timeLeft)}</span>
@@ -339,196 +371,111 @@ export default function GamePlayerPage() {
         )}
 
         {/* SKILL BUILDER */}
-        {game.game_type === "skill_builder" && (
-          <div className="student-card p-8">
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-slate-500 mb-2">
-                <span>Problem {currentIndex + 1} of {game.config.problems?.length || 0}</span>
-              </div>
-              <Progress value={((currentIndex + 1) / (game.config.problems?.length || 1)) * 100} className="h-2" />
-            </div>
-            
-            <div className="text-center mb-8">
-              <p className="text-4xl font-bold font-heading text-slate-900 mb-2">
-                {game.config.problems?.[currentIndex]?.question}
-              </p>
-              {game.config.problems?.[currentIndex]?.hint && (
-                <p className="text-sm text-slate-500">Hint: {game.config.problems[currentIndex].hint}</p>
-              )}
-            </div>
-            
-            <div className="flex gap-4">
-              <Input
-                type="text"
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSkillBuilderAnswer()}
-                placeholder="Your answer"
-                className="skill-builder-input flex-1"
-                autoFocus
-                data-testid="skill-builder-input"
-              />
-              <Button onClick={handleSkillBuilderAnswer} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-8" data-testid="submit-answer-btn">
-                Check
-              </Button>
-            </div>
-          </div>
+        {gameType === "skill_builder" && (
+          <SkillBuilder 
+            config={game.config}
+            currentIndex={currentIndex}
+            userAnswer={userAnswer}
+            setUserAnswer={setUserAnswer}
+            onAnswer={handleSkillBuilderAnswer}
+            progress={((currentIndex + 1) / (game.config.problems?.length || 1)) * 100}
+          />
         )}
 
         {/* QUIZ BATTLE */}
-        {game.game_type === "quiz_battle" && (
-          <div className="student-card p-8">
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-slate-500 mb-2">
-                <span>Question {currentIndex + 1} of {game.config.questions?.length || 0}</span>
-              </div>
-              <Progress value={((currentIndex + 1) / (game.config.questions?.length || 1)) * 100} className="h-2" />
-            </div>
-            
-            <h2 className="text-xl font-bold font-heading text-slate-900 mb-6 text-center">
-              {game.config.questions?.[currentIndex]?.question}
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {game.config.questions?.[currentIndex]?.options?.map((option, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleQuizBattleAnswer(option)}
-                  className="p-4 bg-white border-2 border-slate-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all font-medium text-slate-700"
-                  data-testid={`quiz-battle-option-${i}`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
+        {gameType === "quiz_battle" && (
+          <QuizBattle 
+            config={game.config}
+            currentIndex={currentIndex}
+            onAnswer={handleQuizBattleAnswer}
+            progress={((currentIndex + 1) / (game.config.questions?.length || 1)) * 100}
+          />
         )}
 
         {/* STORY QUEST */}
-        {game.game_type === "story_quest" && (
-          <div className="student-card p-8">
-            {(() => {
-              const scene = game.config.scenes?.[currentIndex];
-              if (!scene) return <p>Loading scene...</p>;
-              
-              return (
-                <>
-                  <div className="prose prose-slate max-w-none mb-8">
-                    <p className="text-lg text-slate-700 leading-relaxed">{scene.text}</p>
-                  </div>
-                  
-                  {scene.ending ? (
-                    <div className="text-center py-8">
-                      <Trophy className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-                      <p className="text-2xl font-bold font-heading text-slate-900">The End</p>
-                      <p className="text-slate-600 mt-2">Final Score: {score + bonusPoints}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {scene.choices?.map((choice, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleStoryChoice(choice)}
-                          className="w-full p-4 bg-gradient-to-r from-purple-50 to-white border-2 border-purple-200 rounded-xl hover:border-purple-400 hover:from-purple-100 transition-all text-left flex items-center gap-4"
-                          data-testid={`story-choice-${i}`}
-                        >
-                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <ChevronRight className="w-5 h-5 text-purple-600" />
-                          </div>
-                          <span className="text-slate-700">{choice.text}</span>
-                          {choice.bonus_points > 0 && (
-                            <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                              +{choice.bonus_points} bonus
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+        {gameType === "story_quest" && (
+          <StoryQuest 
+            config={game.config}
+            currentIndex={currentIndex}
+            onChoice={handleStoryChoice}
+            score={score}
+            bonusPoints={bonusPoints}
+          />
         )}
 
         {/* MAP CHALLENGE */}
-        {game.game_type === "map_challenge" && (
-          <div className="student-card p-6">
-            <div className="mb-4">
-              <div className="flex justify-between text-sm text-slate-500 mb-2">
-                <span>Find: <strong className="text-teal-600 underline decoration-teal-300 decoration-2 underline-offset-4">{game.config.locations?.[currentIndex]?.name}</strong></span>
-                <span>{currentIndex + 1} of {game.config.locations?.length || 0}</span>
-              </div>
-              <Progress value={((currentIndex + 1) / (game.config.locations?.length || 1)) * 100} className="h-2" />
-            </div>
-            
-            <div className="relative rounded-2xl overflow-hidden shadow-inner border border-slate-100 bg-slate-50">
-              {game.config.map_type === "leaflet" ? (
-                <div className="aspect-video w-full z-0">
-                  <MapContainer 
-                    center={[game.config.center_lat || 18, game.config.center_lng || -77]} 
-                    zoom={game.config.zoom || 7} 
-                    className="h-full w-full"
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <MapEvents onMapClick={handleMapClick} />
-                    
-                    {/* Found locations */}
-                    {mapGuesses.map((loc, i) => (
-                      <Marker key={i} position={[loc.lat, loc.lng]}>
-                        {/* Leaflet marker is handled by the fix-icons code above */}
-                      </Marker>
-                    ))}
-                  </MapContainer>
-                </div>
-              ) : (
-                <div 
-                  className="relative aspect-video cursor-crosshair bg-cover bg-center bg-no-repeat transition-all duration-500"
-                  style={{ 
-                    backgroundImage: (game.config?.image_url || game.config_json?.image_url) 
-                      ? `url(${game.config?.image_url || game.config_json?.image_url})` 
-                      : "linear-gradient(135deg, #e0f2fe 0%, #ccfbf1 100%)",
-                  }}
-                  onClick={handleMapClick}
-                  data-testid="map-challenge-area"
-                >
-                  {/* Overlay if no image */}
-                  {!(game.config?.image_url || game.config_json?.image_url) && (
-                    <div className="absolute inset-0 flex items-center justify-center text-blue-400/50 pointer-events-none">
-                      <div className="text-center">
-                        <Search className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                        <p className="text-lg font-medium">Click to locate: {game.config.locations?.[currentIndex]?.name}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Found locations */}
-                  {mapGuesses.map((loc, i) => (
-                    <div 
-                      key={i}
-                      className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 animate-bounce transition-all duration-300"
-                      style={{ left: `${loc.x}%`, top: `${loc.y}%` }}
-                    >
-                      <MapPin className="w-8 h-8 text-green-500 drop-shadow-lg fill-white/20" />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div className="mt-6 p-4 bg-teal-50/50 rounded-xl border border-teal-100/50 flex items-start gap-3">
-              <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Search className="w-4 h-4 text-teal-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-teal-900">Hint</p>
-                <p className="text-sm text-teal-700 italic">"{game.config.locations?.[currentIndex]?.hint}"</p>
-              </div>
-            </div>
-          </div>
+        {gameType === "map_challenge" && (
+          <MapChallenge 
+            config={game.config}
+            currentIndex={currentIndex}
+            gameState={gameState}
+            mapGuesses={mapGuesses}
+            onMapClick={handleMapClick}
+            progress={((currentIndex + 1) / (game.config.locations?.length || 1)) * 100}
+          />
+        )}
+
+        {/* MEMORY MATCH */}
+        {(gameType === "memorymatch" || gameType === "memory match") && (
+          <MemoryMatch 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* SENTENCE BUILDER */}
+        {gameType === "sentencebuilder" && (
+          <SentenceBuilder 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* BUCKET SORT */}
+        {gameType === "bucketsort" && (
+          <BucketSort 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* FILL IN THE BLANKS */}
+        {gameType === "fill in the blanks" && (
+          <FillInBlanks 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* DRAG AND DROP */}
+        {gameType === "drag and drop" && (
+          <DragAndDrop 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* INTERACTIVE SIMULATION */}
+        {(gameType === "interactive simulation" || gameType === "interactive_simulation") && (
+          <InteractiveSimulation 
+            config={game.config}
+            onScoreUpdate={(points) => setScore(prev => prev + points)}
+            onComplete={handleGameEnd}
+          />
+        )}
+
+        {/* TYPING GAME */}
+        {gameType === "typing" && (
+          <TypingGame 
+            config={game.config}
+            gameId={gameId}
+            onComplete={handleGameEnd}
+          />
         )}
       </div>
     </div>

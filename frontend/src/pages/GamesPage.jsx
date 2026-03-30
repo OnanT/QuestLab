@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { apiClient } from "../App";
+import { apiClient, useAuth } from "../App";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Gamepad2, Target, Flame, BookOpen, Map, ArrowLeft, Filter, Star } from "lucide-react";
+import { Gamepad2, Target, Flame, BookOpen, Map, ArrowLeft, Filter, Star, LayoutGrid, Type, Database, PenTool, MousePointer2, Beaker } from "lucide-react";
 import StudentNav from "./StudentNav";
 
 export default function GamesPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [games, setGames] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -53,22 +54,40 @@ export default function GamesPage() {
   };
 
   const getGameTypeIcon = (type) => {
-    switch (type) {
+    const t = type?.toLowerCase();
+    switch (t) {
       case "skill_builder": return <Target className="w-6 h-6" />;
       case "quiz_battle": return <Flame className="w-6 h-6" />;
       case "story_quest": return <BookOpen className="w-6 h-6" />;
       case "map_challenge": return <Map className="w-6 h-6" />;
+      case "memorymatch":
+      case "memory match": return <LayoutGrid className="w-6 h-6" />;
+      case "sentencebuilder": return <Type className="w-6 h-6" />;
+      case "bucketsort": return <Database className="w-6 h-6" />;
+      case "fill in the blanks": return <PenTool className="w-6 h-6" />;
+      case "drag and drop": return <MousePointer2 className="w-6 h-6" />;
+      case "interactive simulation":
+      case "interactive_simulation": return <Beaker className="w-6 h-6" />;
       default: return <Gamepad2 className="w-6 h-6" />;
     }
   };
 
   const getGameTypeColor = (type) => {
-    switch (type) {
+    const t = type?.toLowerCase();
+    switch (t) {
       case "skill_builder": return { bg: "from-blue-400 to-blue-600", light: "bg-blue-100", text: "text-blue-600" };
       case "quiz_battle": return { bg: "from-red-400 to-red-600", light: "bg-red-100", text: "text-red-600" };
       case "story_quest": return { bg: "from-purple-400 to-purple-600", light: "bg-purple-100", text: "text-purple-600" };
       case "map_challenge": return { bg: "from-green-400 to-green-600", light: "bg-green-100", text: "text-green-600" };
-      default: return { bg: "from-teal-400 to-teal-600", light: "bg-teal-100", text: "text-teal-600" };
+      case "memorymatch":
+      case "memory match": return { bg: "from-amber-400 to-amber-600", light: "bg-amber-100", text: "text-amber-600" };
+      case "sentencebuilder": return { bg: "from-teal-400 to-teal-600", light: "bg-teal-100", text: "text-teal-600" };
+      case "bucketsort": return { bg: "from-indigo-400 to-indigo-600", light: "bg-indigo-100", text: "text-indigo-600" };
+      case "fill in the blanks": return { bg: "from-orange-400 to-orange-600", light: "bg-orange-100", text: "text-orange-600" };
+      case "drag and drop": return { bg: "from-pink-400 to-pink-600", light: "bg-pink-100", text: "text-pink-600" };
+      case "interactive simulation":
+      case "interactive_simulation": return { bg: "from-cyan-400 to-cyan-600", light: "bg-cyan-100", text: "text-cyan-600" };
+      default: return { bg: "from-slate-400 to-slate-600", light: "bg-slate-100", text: "text-slate-600" };
     }
   };
 
@@ -86,7 +105,23 @@ export default function GamesPage() {
     { value: "quiz_battle", label: "Quiz Battle" },
     { value: "story_quest", label: "Story Quest" },
     { value: "map_challenge", label: "Map Challenge" },
+    { value: "memorymatch", label: "Memory Match" },
+    { value: "sentencebuilder", label: "Sentence Builder" },
+    { value: "bucketsort", label: "Bucket Sort" },
+    { value: "fill in the blanks", label: "Fill in Blanks" },
+    { value: "drag and drop", label: "Drag & Drop" },
+    { value: "interactive_simulation", label: "Simulations" },
   ];
+
+  const getDefaultHome = () => {
+    if (!user) return "/dashboard";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "parent": return "/parent";
+      default: return "/dashboard";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="games-page">
@@ -95,7 +130,7 @@ export default function GamesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link to="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <Link to={getDefaultHome()} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
           <div>
@@ -105,7 +140,7 @@ export default function GamesPage() {
         </div>
 
         {/* Game Type Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-4 mb-8">
           {gameTypes.map((type) => {
             const colors = getGameTypeColor(type.value);
             const isActive = filters.game_type === type.value;
@@ -125,7 +160,7 @@ export default function GamesPage() {
                     {getGameTypeIcon(type.value)}
                   </span>
                 </div>
-                <p className={`font-bold ${isActive ? "text-white" : "text-slate-900"}`}>{type.label}</p>
+                <p className={`font-bold text-sm ${isActive ? "text-white" : "text-slate-900"}`}>{type.label}</p>
               </button>
             );
           })}
@@ -145,7 +180,7 @@ export default function GamesPage() {
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
               {subjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
+                <SelectItem key={subject.id} value={subject.id.toString()}>{subject.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

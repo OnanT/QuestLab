@@ -111,7 +111,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
     # Trigger welcome email in background (don't fail registration if this fails)
     try:
-        send_welcome_email.delay(db_user.email, db_user.username)
+        send_welcome_email.delay(db_user.email, db_user.username, db_user.role, db_user.id)
     except Exception as e:
         # Just log the error, don't raise an exception
         print(f"Error sending welcome email: {e}")

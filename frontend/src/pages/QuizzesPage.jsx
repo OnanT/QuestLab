@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { apiClient } from "../App";
+import { apiClient, useAuth } from "../App";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { HelpCircle, Clock, Star, ArrowLeft, Filter, CheckCircle, ListChecks } from "lucide-react";
 import StudentNav from "./StudentNav";
 
 export default function QuizzesPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [quizzes, setQuizzes] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -90,6 +91,16 @@ export default function QuizzesPage() {
     return `${mins} min`;
   };
 
+  const getDefaultHome = () => {
+    if (!user) return "/dashboard";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "parent": return "/parent";
+      default: return "/dashboard";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="quizzes-page">
       <StudentNav />
@@ -97,7 +108,7 @@ export default function QuizzesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link to="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <Link to={getDefaultHome()} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
           <div>

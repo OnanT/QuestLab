@@ -13,9 +13,12 @@ router = APIRouter(
 
 
 @router.get("", response_model=List[schemas.SchoolOut])
-def get_schools(db: Session = Depends(get_db)):
-    """Get all schools"""
-    schools = db.query(models.School).all()
+def get_schools(island_id: int = None, db: Session = Depends(get_db)):
+    """Get all schools, optionally filtered by island_id"""
+    query = db.query(models.School)
+    if island_id:
+        query = query.filter(models.School.island_id == island_id)
+    schools = query.all()
     return schools
 
 

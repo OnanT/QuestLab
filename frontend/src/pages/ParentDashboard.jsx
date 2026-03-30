@@ -5,11 +5,12 @@ import {
   LogOut, ChevronRight, Star, Medal, TrendingUp,
   Bell, RefreshCw, ChevronDown, ChevronUp, Eye,
   Clock, Target, Award, BarChart3, Activity,
-  Search, Settings, Download
+  Search, Settings, Download, Copy, Check, AlertCircle
 } from "lucide-react";
 import { useAuth } from "../App";
 import { useParentData } from "../hooks/useParentData";
 import { Button } from "../components/ui/button";
+import { toast } from "sonner";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
@@ -17,6 +18,16 @@ export default function ParentDashboard() {
   const { students, loading, error, lastUpdated, refetch } = useParentData();
   const [expandedStudents, setExpandedStudents] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const copyParentId = () => {
+    if (user?.id) {
+      navigator.clipboard.writeText(user.id.toString());
+      setCopied(true);
+      toast.success("Parent ID copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const toggleStudent = useCallback((studentId) => {
     setExpandedStudents(prev => {
@@ -78,18 +89,32 @@ export default function ParentDashboard() {
 
       <main role="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-12">
         {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeInUp">
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-fadeInUp">
           <div>
             <h1 className="text-3xl font-extrabold font-heading text-slate-900 mb-1">
               Parent Dashboard
             </h1>
             <p className="text-slate-500">Track and support your children's learning journey</p>
           </div>
-          {lastUpdated && (
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
-              Sync: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+          
+          <div className="bg-teal-50 border-2 border-teal-100 rounded-3xl p-4 flex items-center gap-4 shadow-sm shadow-teal-500/5">
+            <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mb-1">Your Parent ID</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-black font-accent text-slate-900">{user?.id}</span>
+                <button 
+                  onClick={copyParentId}
+                  className="p-1.5 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                  title="Copy ID to share with your child"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Global Stats */}
@@ -108,7 +133,7 @@ export default function ParentDashboard() {
               type="text"
               placeholder="Search students..."
               value={searchTerm}
-              onChange={(e) => setSearchSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-2xl focus:border-teal-500 focus:outline-none transition-all shadow-sm"
             />
           </div>
@@ -153,7 +178,7 @@ export default function ParentDashboard() {
         </div>
 
         {/* Quick Links for Parents */}
-        <div className="grid md:grid-cols-3 gap-6 animate-fadeInUp stagger-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fadeInUp stagger-4">
           <QuickLink 
             to="/lessons" 
             icon={BookOpen} 
@@ -162,18 +187,25 @@ export default function ParentDashboard() {
             color="teal" 
           />
           <QuickLink 
+            to="/games" 
+            icon={Gamepad2} 
+            title="Learning Games" 
+            desc="Explore interactive games" 
+            color="indigo" 
+          />
+          <QuickLink 
+            to="/quizzes" 
+            icon={HelpCircle} 
+            title="Assessments" 
+            desc="View available quizzes" 
+            color="orange" 
+          />
+          <QuickLink 
             to="/leaderboard" 
             icon={Trophy} 
             title="Leaderboard" 
             desc="See how your kids rank globally" 
             color="amber" 
-          />
-          <QuickLink 
-            to="/settings" 
-            icon={Settings} 
-            title="Account Settings" 
-            desc="Manage your parent profile" 
-            color="purple" 
           />
         </div>
       </main>

@@ -19,6 +19,19 @@ def create_feedback(
     """
     Submit feedback for a lesson or general platform
     """
+    # Check if user already submitted feedback for this lesson
+    if feedback.lesson_id:
+        existing_feedback = db.query(models.Feedback).filter(
+            models.Feedback.user_id == current_user.id,
+            models.Feedback.lesson_id == feedback.lesson_id
+        ).first()
+        
+        if existing_feedback:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You have already submitted feedback for this lesson"
+            )
+
     db_feedback = models.Feedback(
         user_id=current_user.id,
         lesson_id=feedback.lesson_id,

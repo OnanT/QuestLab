@@ -69,4 +69,4 @@ celery==5.4.0
 kombu==5.4.2
 vine==5.1.0
 amqp==5.3.1
-flower==2.0.1
+flower==2.0.1fastapi-mail==1.4.1

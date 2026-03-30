@@ -9,7 +9,7 @@ from config import settings
 from routers import (
     auth, users, lessons, subjects, games, quizzes,
     progress, media, rewards, schools, leaderboard, badges, feedback, country,
-    admin,
+    admin, typing
 )
 from schemas import (
     UserCreate, UserOut, Token,
@@ -61,6 +61,7 @@ app.include_router(leaderboard.router, prefix="/api")
 app.include_router(badges.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(typing.router, prefix="/api")
 
 
 

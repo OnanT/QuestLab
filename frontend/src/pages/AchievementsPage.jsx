@@ -40,14 +40,24 @@ export default function AchievementsPage() {
 
   const userBadges = user?.badges || [];
 
+  const getDefaultHome = () => {
+    if (!user) return "/dashboard";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "parent": return "/parent";
+      default: return "/dashboard";
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#FFFDF5]" data-testid="achievements-page">
+    <div className="min-h-screen bg-[#FFFDF5]">
       <StudentNav />
-      
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link to="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <Link to={getDefaultHome()} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
           <div>

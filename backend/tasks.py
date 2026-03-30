@@ -48,25 +48,48 @@ celery_app.conf.update(
 # ============================================================================
 
 @celery_app.task(name='tasks.send_welcome_email')
-def send_welcome_email(email: str, username: str):
+def send_welcome_email(email: str, username: str, role: str, user_id: int):
     """
     Send a welcome email to a newly registered user
-    Currently a mock implementation
     """
-    logger.info(f"MOCK EMAIL: Sending welcome email to {email} (User: {username})")
-    # In a real implementation, you would use an email library (like fastapi-mail or smtplib)
-    # to send a formatted HTML email.
-    return {"status": "success", "email": email}
+    import asyncio
+    from utils.email_service import send_welcome_email as send_email_func
+    
+    logger.info(f"Sending welcome email to {email} (User: {username}, Role: {role})")
+    
+    # Celery tasks are sync by default, but our service is async
+    loop = asyncio.get_event_loop()
+    success = loop.run_until_complete(send_email_func(email, username, role, user_id))
+    
+    return {"status": "success" if success else "failed", "email": email}
 
 
 @celery_app.task(name='tasks.send_otp_email')
 def send_otp_email(email: str, otp_code: str):
     """
     Send an OTP email for password reset
-    Currently a mock implementation
     """
-    logger.info(f"MOCK EMAIL: Sending OTP {otp_code} to {email}")
-    return {"status": "success", "email": email}
+    import asyncio
+    from fastapi_mail import FastMail, MessageSchema, MessageType
+    from utils.email_service import conf
+    
+    logger.info(f"Sending OTP {otp_code} to {email}")
+    
+    message = MessageSchema(
+        subject="Your QuestLab Password Reset OTP",
+        recipients=[email],
+        body=f"Your password reset code is: {otp_code}. It expires in 15 minutes.",
+        subtype=MessageType.plain
+    )
+    
+    fm = FastMail(conf)
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(fm.send_message(message))
+        return {"status": "success", "email": email}
+    except Exception as e:
+        logger.error(f"Failed to send OTP email: {e}")
+        return {"status": "failed", "email": email, "error": str(e)}
 
 
 # ============================================================================

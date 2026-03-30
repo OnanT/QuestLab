@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     # Default Organization
     DEFAULT_ORGANIZATION_ID: int = 1
     DEFAULT_ORGANIZATION_NAME: str = "Quest Lab"
+
+    # Mail Settings
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@questlab.onan.shop"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_FROM_NAME: str = "QuestLab"
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
     
     @property
     def cors_origins_list(self) -> List[str]:

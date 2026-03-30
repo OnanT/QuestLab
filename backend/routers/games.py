@@ -27,7 +27,8 @@ def get_game_type_from_engine(engine_name: str) -> str:
         "SkillBuilder": "skill_builder",
         "QuizBattle": "quiz_battle",
         "StoryQuest": "story_quest",
-        "MapChallenge": "map_challenge"
+        "MapChallenge": "map_challenge",
+        "TypingGame": "typing"
     }
     
     if engine_name in mapping:

@@ -1,6 +1,6 @@
 // frontend/src/App.tsx
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Toaster } from "sonner";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ParentDashboard from "./pages/ParentDashboard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import FeedbackPage from "./pages/FeedbackPage";
+import ExitSurveyPage from "./pages/ExitSurveyPage";
 import FeedbackFAB from "./components/FeedbackFAB";
 
 import "./App.css";
@@ -95,6 +96,7 @@ apiClient.interceptors.response.use(
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthContextType["user"]>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedUser = localStorage.getItem("questlab_user");
@@ -156,10 +158,23 @@ const login = async (username: string, password: string) => {
   };
 
   const logout = () => {
+    const lastPromptDate = localStorage.getItem("lastFeedbackPromptDate");
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Clear auth data first
     localStorage.removeItem("questlab_token");
     localStorage.removeItem("questlab_user");
+    const wasLoggedIn = user !== null;
     setUser(null);
+    
     toast.success("Logged out successfully");
+
+    // Only redirect to survey if they were logged in and haven't seen it today
+    if (wasLoggedIn && lastPromptDate !== today) {
+      navigate("/exit-survey");
+    } else {
+      navigate("/login");
+    }
   };
 
   const updateUser = useCallback((data: any) => {
@@ -228,6 +243,7 @@ function AppRouter() {
       <Route path="/register" element={user ? <Navigate to={getDefaultRoute()} /> : <RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/exit-survey" element={<ExitSurveyPage />} />
 
       {/* Student */}
       <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["student"]}><StudentDashboard /></ProtectedRoute>} />
@@ -235,12 +251,12 @@ function AppRouter() {
       <Route path="/lessons" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonsPage /></ProtectedRoute>} />
       <Route path="/lessons/:lessonId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><LessonViewPage /></ProtectedRoute>} />
       <Route path="/quizzes" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><QuizzesPage /></ProtectedRoute>} />
-      <Route path="/quizzes/:quizId" element={<ProtectedRoute allowedRoles={["student"]}><QuizPlayerPage /></ProtectedRoute>} />
-      <Route path="/quizzes/lesson/:lessonId" element={<ProtectedRoute allowedRoles={["student"]}><QuizPlayerPage /></ProtectedRoute>} />
+      <Route path="/quizzes/:quizId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><QuizPlayerPage /></ProtectedRoute>} />
+      <Route path="/quizzes/lesson/:lessonId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><QuizPlayerPage /></ProtectedRoute>} />
       <Route path="/games" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><GamesPage /></ProtectedRoute>} />
-      <Route path="/games/:gameId" element={<ProtectedRoute allowedRoles={["student"]}><GamePlayerPage /></ProtectedRoute>} />
+      <Route path="/games/:gameId" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><GamePlayerPage /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><LeaderboardPage /></ProtectedRoute>} />
-      <Route path="/achievements" element={<ProtectedRoute allowedRoles={["student"]}><AchievementsPage /></ProtectedRoute>} />
+      <Route path="/achievements" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent"]}><AchievementsPage /></ProtectedRoute>} />
       <Route path="/feedback" element={<ProtectedRoute allowedRoles={["student", "teacher", "parent", "admin"]}><FeedbackPage /></ProtectedRoute>} />
 
       {/* Admin */}

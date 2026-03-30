@@ -535,7 +535,7 @@ class Feedback(Base):
     user_id = Column(Integer, ForeignKey(
         "users.id", ondelete="CASCADE"), nullable=False)
     lesson_id = Column(Integer, ForeignKey(
-        "lessons.id", ondelete="CASCADE"), nullable=False)
+        "lessons.id", ondelete="CASCADE"), nullable=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

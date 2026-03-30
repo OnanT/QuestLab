@@ -16,8 +16,18 @@ export default function StudentNav() {
     navigate("/");
   };
 
+  const getDefaultHome = () => {
+    if (!user) return "/";
+    switch (user.role) {
+      case "admin": return "/admin";
+      case "teacher": return "/teacher";
+      case "parent": return "/parent";
+      default: return "/dashboard";
+    }
+  };
+
   const navLinks = [
-    { to: "/dashboard", icon: Home, label: "Home", testId: "mob-nav-home" },
+    { to: getDefaultHome(), icon: Home, label: "Home", testId: "mob-nav-home" },
     { to: "/lessons", icon: BookOpen, label: "Lessons", testId: "mob-nav-lessons" },
     { to: "/quizzes", icon: HelpCircle, label: "Quizzes", testId: "mob-nav-quizzes" },
     { to: "/games", icon: Gamepad2, label: "Games", testId: "mob-nav-games" },

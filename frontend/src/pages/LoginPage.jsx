@@ -158,9 +158,9 @@ export default function LoginPage() {
               <p className="text-[10px] font-black uppercase tracking-widest">Demo Credentials</p>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <DemoPill label="Student" name="student" />
-              <DemoPill label="Teacher" name="teacher" />
-              <DemoPill label="Parent" name="parent" />
+              <DemoPill label="Student" name="student123" />
+              <DemoPill label="Teacher" name="teacher123" />
+              <DemoPill label="Parent" name="parent123" />
             </div>
           </div>
         </div>
