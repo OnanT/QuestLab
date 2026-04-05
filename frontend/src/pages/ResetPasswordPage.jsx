@@ -16,6 +16,7 @@ export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (!email) {
@@ -23,6 +24,31 @@ export default function ResetPasswordPage() {
       navigate("/forgot-password");
     }
   }, [email, navigate]);
+
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    
+    setLoading(true);
+    try {
+      await apiClient.post("/forgot-password", { email });
+      toast.success("A new code has been sent to your email!");
+      setResendCooldown(60);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to resend code. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,6 +112,16 @@ export default function ResetPasswordPage() {
                   required
                   className="h-14 pl-12 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-black text-xl tracking-[0.5em]"
                 />
+              </div>
+              <div className="flex justify-end px-1">
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={resendCooldown > 0 || loading}
+                  className="text-[10px] font-black uppercase tracking-widest text-teal-600 hover:text-teal-700 disabled:text-slate-300 transition-colors"
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+                </button>
               </div>
             </div>
 

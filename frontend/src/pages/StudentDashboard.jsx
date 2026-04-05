@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../App";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { Button } from "../components/ui/button";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 import { 
   BookOpen, Gamepad2, Trophy, Star, Flame, Target, 
   ChevronRight, Award, HelpCircle, RefreshCw,
@@ -51,7 +51,7 @@ export default function StudentDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--color-bg)]">
-        <StudentNav />
+        <UniversalNavbar />
         <main role="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-20 md:pb-8">
           <div className="space-y-8 animate-pulse">
             <div className="space-y-3">
@@ -74,7 +74,7 @@ export default function StudentDashboard() {
   if (error) {
     return (
       <div className="min-h-screen bg-[var(--color-bg)] flex flex-col">
-        <StudentNav />
+        <UniversalNavbar />
         <main role="main" className="flex-1 flex items-center justify-center p-4">
           <div className="text-center max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
             <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -94,7 +94,7 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]" data-testid="student-dashboard">
-      <StudentNav />
+      <UniversalNavbar />
 
       <main role="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24 md:pb-12">
         {/* Welcome Section */}
@@ -383,3 +383,5 @@ function QuickLink({ to, icon: Icon, label, color, testId }) {
     </Link>
   );
 }
+
+

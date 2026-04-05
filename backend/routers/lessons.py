@@ -56,6 +56,10 @@ def get_lesson_enhanced(lesson_id: int, db: Session = Depends(get_db)):
     lesson_dict['grade_levels'] = lesson.grade_levels if lesson.grade_levels else []
     lesson_dict['tags'] = lesson.tags if lesson.tags else []
     lesson_dict['subject_name'] = lesson.category
+    lesson_dict['is_published'] = lesson.is_published
+    lesson_dict['is_featured'] = lesson.is_featured
+    lesson_dict['view_count'] = lesson.view_count
+    lesson_dict['completion_count'] = lesson.completion_count
 
     return lesson_dict
 
@@ -66,6 +70,11 @@ def create_lesson(
     current_user: models.User = Depends(get_current_active_user_with_role(['admin', 'teacher'])),
     db: Session = Depends(get_db)
 ):
+    # Validate concept exists if provided
+    if lesson.concept_id:
+        concept = db.query(models.Concept).filter(models.Concept.id == lesson.concept_id).first()
+        if not concept:
+            raise HTTPException(status_code=400, detail="Concept not found")
 
     lesson_dict = lesson.dict()
     lesson_dict['grade_levels_str'] = ','.join(
@@ -95,6 +104,10 @@ def create_lesson(
     lesson_out['grade_levels'] = db_lesson.grade_levels if db_lesson.grade_levels else []
     lesson_out['tags'] = db_lesson.tags if db_lesson.tags else []
     lesson_out['subject_name'] = db_lesson.category
+    lesson_out['is_published'] = db_lesson.is_published
+    lesson_out['is_featured'] = db_lesson.is_featured
+    lesson_out['view_count'] = db_lesson.view_count
+    lesson_out['completion_count'] = db_lesson.completion_count
 
     return lesson_out
 
@@ -139,6 +152,10 @@ def update_lesson(
     lesson_out['grade_levels'] = lesson.grade_levels if lesson.grade_levels else []
     lesson_out['tags'] = lesson.tags if lesson.tags else []
     lesson_out['subject_name'] = lesson.category
+    lesson_out['is_published'] = lesson.is_published
+    lesson_out['is_featured'] = lesson.is_featured
+    lesson_out['view_count'] = lesson.view_count
+    lesson_out['completion_count'] = lesson.completion_count
 
     return lesson_out
 

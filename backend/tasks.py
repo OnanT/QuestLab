@@ -47,49 +47,109 @@ celery_app.conf.update(
 # COMMUNICATION TASKS
 # ============================================================================
 
-@celery_app.task(name='tasks.send_welcome_email')
-def send_welcome_email(email: str, username: str, role: str, user_id: int):
+@celery_app.task(
+    name='tasks.send_welcome_email',
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    retry_backoff=True
+)
+def send_welcome_email(self, email: str, username: str, role: str, user_id: int):
     """
     Send a welcome email to a newly registered user
     """
     import asyncio
     from utils.email_service import send_welcome_email as send_email_func
     
-    logger.info(f"Sending welcome email to {email} (User: {username}, Role: {role})")
+    logger.info(f"Attempting to send welcome email to {email} (User: {username}, Role: {role}). Attempt {self.request.retries + 1}")
     
     # Celery tasks are sync by default, but our service is async
-    loop = asyncio.get_event_loop()
-    success = loop.run_until_complete(send_email_func(email, username, role, user_id))
-    
-    return {"status": "success" if success else "failed", "email": email}
-
-
-@celery_app.task(name='tasks.send_otp_email')
-def send_otp_email(email: str, otp_code: str):
-    """
-    Send an OTP email for password reset
-    """
-    import asyncio
-    from fastapi_mail import FastMail, MessageSchema, MessageType
-    from utils.email_service import conf
-    
-    logger.info(f"Sending OTP {otp_code} to {email}")
-    
-    message = MessageSchema(
-        subject="Your QuestLab Password Reset OTP",
-        recipients=[email],
-        body=f"Your password reset code is: {otp_code}. It expires in 15 minutes.",
-        subtype=MessageType.plain
-    )
-    
-    fm = FastMail(conf)
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(fm.send_message(message))
+        loop = asyncio.get_event_loop()
+        success = loop.run_until_complete(send_email_func(email, username, role, user_id))
+        
+        if not success:
+            logger.warning(f"Email service returned failure for {email}. Retrying...")
+            raise Exception("Email service failure")
+            
         return {"status": "success", "email": email}
     except Exception as e:
-        logger.error(f"Failed to send OTP email: {e}")
-        return {"status": "failed", "email": email, "error": str(e)}
+        logger.error(f"Error in send_welcome_email task: {str(e)}")
+        raise e
+
+
+
+@celery_app.task(
+    name='tasks.send_otp_email',
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    retry_backoff=True
+)
+def send_otp_email(self, email: str, otp_code: str):
+    """
+    Send an OTP email for password reset using HTML template.
+    """
+    import asyncio
+    from utils.email_service import send_password_reset_email
+    
+    logger.info(f"Attempting to send OTP email to {email}. Attempt {self.request.retries + 1}")
+    
+    try:
+        loop = asyncio.get_event_loop()
+        success = loop.run_until_complete(send_password_reset_email(email, otp_code))
+        
+        if not success:
+            logger.warning(f"OTP email service returned failure for {email}. Retrying...")
+            raise Exception("Email service failure")
+            
+        return {"status": "success", "email": email}
+    except Exception as e:
+        logger.error(f"Error in send_otp_email task: {str(e)}")
+        raise e
+
+
+@celery_app.task(
+    name='tasks.send_feedback_email',
+    bind=True,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    retry_backoff=True
+)
+def send_feedback_email(
+    self,
+    recipient_email: str,
+    username: str,
+    role: str,
+    rating: int,
+    comment: str,
+    feedback_type: str,
+    lesson_title: str = None
+):
+    """
+    Send a notification email when new feedback is submitted.
+    """
+    import asyncio
+    from utils.email_service import send_feedback_notification
+    
+    logger.info(f"Attempting to send feedback notification to {recipient_email}. Attempt {self.request.retries + 1}")
+    
+    try:
+        loop = asyncio.get_event_loop()
+        success = loop.run_until_complete(
+            send_feedback_notification(
+                recipient_email, username, role, rating, comment, feedback_type, lesson_title
+            )
+        )
+        
+        if not success:
+            logger.warning(f"Feedback email service returned failure for {recipient_email}. Retrying...")
+            raise Exception("Email service failure")
+            
+        return {"status": "success", "email": recipient_email}
+    except Exception as e:
+        logger.error(f"Error in send_feedback_email task: {str(e)}")
+        raise e
 
 
 # ============================================================================

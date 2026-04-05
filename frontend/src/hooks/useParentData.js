@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../App";
+import { toast } from "sonner";
 
 export function useParentData() {
   const [students, setStudents] = useState([]);
@@ -10,30 +11,9 @@ export function useParentData() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch students linked to this parent
+      // Fetch students linked to this parent - now includes stats from backend
       const response = await apiClient.get("/users/my-students");
-      
-      // For each student, we want to fetch their stats too
-      const studentsWithStats = await Promise.all(
-        response.data.map(async (student) => {
-          try {
-            const statsRes = await apiClient.get(`/users/${student.id}/stats`);
-            const data = statsRes.data;
-            // Ensure badges is an array
-            if (data.badges && typeof data.badges === 'string') {
-              data.badges = data.badges.split(',').filter(Boolean);
-            } else if (!Array.isArray(data.badges)) {
-              data.badges = [];
-            }
-            return { ...student, ...data };
-          } catch (e) {
-            console.error(`Failed to fetch stats for student ${student.id}`, e);
-            return { ...student, badges: [] };
-          }
-        })
-      );
-
-      setStudents(studentsWithStats);
+      setStudents(response.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
@@ -44,9 +24,43 @@ export function useParentData() {
     }
   }, []);
 
+  const registerStudent = useCallback(async (studentData) => {
+    try {
+      const response = await apiClient.post("/users/register-student", studentData);
+      toast.success(`Successfully registered ${studentData.username}!`);
+      await fetchData(); // Refresh list after registration
+      return response.data;
+    } catch (err) {
+      console.error("Failed to register student:", err);
+      toast.error(err.response?.data?.detail || "Failed to register student");
+      throw err;
+    }
+  }, [fetchData]);
+
+  const removeStudent = useCallback(async (studentId) => {
+    try {
+      await apiClient.delete(`/users/student/${studentId}`);
+      toast.success("Student account removed successfully");
+      await fetchData(); // Refresh list after removal
+      return true;
+    } catch (err) {
+      console.error("Failed to remove student:", err);
+      toast.error(err.response?.data?.detail || "Failed to remove student");
+      throw err;
+    }
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { students, loading, error, lastUpdated, refetch: fetchData };
+  return { 
+    students, 
+    loading, 
+    error, 
+    lastUpdated, 
+    refetch: fetchData, 
+    registerStudent,
+    removeStudent
+  };
 }

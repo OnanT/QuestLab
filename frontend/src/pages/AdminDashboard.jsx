@@ -6,6 +6,12 @@ import { useAdminData } from "../hooks/useAdminData";
 import AdminSidebar from "./admin/AdminSidebar";
 import AdminOverview from "./admin/AdminOverview";
 import AdminLessons from "./admin/AdminLessons";
+import AdminUsers from "./admin/AdminUsers";
+import AdminQuizzes from "./admin/AdminQuizzes";
+import AdminGames from "./admin/AdminGames";
+import AdminAssignments from "./admin/AdminAssignments";
+import AdminSchools from "./admin/AdminSchools";
+import AdminSubjects from "./admin/AdminSubjects";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -25,12 +31,12 @@ export default function AdminDashboard() {
         <Routes>
           <Route index element={<AdminOverview {...adminData} />} />
           <Route path="lessons" element={<AdminLessons />} />
-          <Route path="quizzes" element={<PlaceholderSection title="Assessments Management" />} />
-          <Route path="games" element={<PlaceholderSection title="Learning Games" />} />
-          <Route path="users" element={<PlaceholderSection title="User Directory" />} />
-          <Route path="assignments" element={<PlaceholderSection title="Student Assignments" />} />
-          <Route path="schools" element={<PlaceholderSection title="Schools & Institutions" />} />
-          <Route path="subjects" element={<PlaceholderSection title="Curriculum Subjects" />} />
+          <Route path="quizzes" element={<AdminQuizzes />} />
+          <Route path="games" element={<AdminGames />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="assignments" element={<AdminAssignments />} />
+          <Route path="schools" element={<AdminSchools />} />
+          <Route path="subjects" element={<AdminSubjects />} />
         </Routes>
       </main>
     </div>

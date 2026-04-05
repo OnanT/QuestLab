@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 import { 
   BookOpen, Search, Filter, Clock, Star, ChevronRight, 
   Plus, Bookmark, TrendingUp, Users, Calendar, Hash
@@ -215,7 +215,7 @@ export default function LessonsPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="lessons-page">
-      <StudentNav />
+      <UniversalNavbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

@@ -52,7 +52,7 @@ class PopularityMetrics(Base):
     views_total = Column(Integer, default=0)
     completions_total = Column(Integer, default=0)
     popularity_score = Column(Numeric(10, 2), default=0)
-    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     lesson = relationship("Lesson")
@@ -151,6 +151,11 @@ class User(Base):
     last_login = Column(DateTime)
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(TIMESTAMP, onupdate=text("CURRENT_TIMESTAMP"))
+
+    __table_args__ = (
+        Index('ix_users_username_lower', func.lower(username), unique=True),
+        Index('ix_users_email_lower', func.lower(email), unique=True),
+    )
 
     # Relationships
     organization = relationship("Organization", back_populates="users")

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { apiClient, useAuth } from "../App";
 import { Award, Trophy, Star, Flame, Zap, Crown, Target, Gamepad2, ArrowLeft, Lock } from "lucide-react";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 
 export default function AchievementsPage() {
   const { user } = useAuth();
@@ -52,7 +52,7 @@ export default function AchievementsPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]">
-      <StudentNav />
+      <UniversalNavbar />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

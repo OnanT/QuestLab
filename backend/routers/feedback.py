@@ -4,13 +4,15 @@ from typing import List
 
 import models, schemas
 from dependencies import get_db, get_current_active_user, get_current_active_user_with_role
+from tasks import send_feedback_email
+from config import settings
 
 router = APIRouter(
     prefix="/feedback",
     tags=["Feedback"],
 )
 
-@router.post("/", response_model=schemas.FeedbackOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=schemas.FeedbackOut, status_code=status.HTTP_201_CREATED)
 def create_feedback(
     feedback: schemas.FeedbackCreate,
     current_user: models.User = Depends(get_current_active_user),
@@ -41,9 +43,49 @@ def create_feedback(
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
+
+    # Trigger notification
+    try:
+        recipient_email = None
+        feedback_type = "General Platform Feedback"
+        lesson_title = None
+        
+        if feedback.lesson_id:
+            lesson = db.query(models.Lesson).filter(models.Lesson.id == feedback.lesson_id).first()
+            if lesson:
+                feedback_type = f"Lesson Feedback: {lesson.title}"
+                lesson_title = lesson.title
+                # Notify lesson creator (teacher)
+                if lesson.creator_id:
+                    creator = db.query(models.User).filter(models.User.id == lesson.creator_id).first()
+                    if creator and creator.email:
+                        recipient_email = creator.email
+        
+        # Fallback to Organization contact email or a default admin email
+        if not recipient_email:
+            org = db.query(models.Organization).filter(models.Organization.id == current_user.organization_id).first()
+            if org and org.contact_email:
+                recipient_email = org.contact_email
+            else:
+                # Absolute fallback
+                recipient_email = settings.MAIL_FROM
+        
+        send_feedback_email.delay(
+            recipient_email=recipient_email,
+            username=current_user.username,
+            role=current_user.role,
+            rating=feedback.rating,
+            comment=feedback.comment,
+            feedback_type=feedback_type,
+            lesson_title=lesson_title
+        )
+    except Exception as e:
+        # Don't fail the request if notification fails
+        print(f"Failed to trigger feedback notification: {e}")
+
     return db_feedback
 
-@router.get("/", response_model=List[schemas.FeedbackOut])
+@router.get("", response_model=List[schemas.FeedbackOut])
 def get_all_feedback(
     current_user: models.User = Depends(get_current_active_user_with_role(["admin", "teacher"])),
     db: Session = Depends(get_db)

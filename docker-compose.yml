@@ -78,6 +78,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PYTHONPATH: .
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: ${ALGORITHM}
@@ -87,6 +88,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
+    env_file:
+      - .env
     volumes:
       - ./backend:/app 
       - uploads_volume:/app/uploads
@@ -97,7 +100,7 @@ services:
       - questlab_network
     expose:
       - "8000"
-    command: ["/bin/bash", "-c", "sleep 10 && uvicorn main:app --host 0.0.0.0 --port 8000"]
+    command: ["/bin/bash", "-c", "sleep 10 && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*'"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -135,10 +138,13 @@ services:
       backend:
         condition: service_healthy
     environment:
+      PYTHONPATH: .
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/0
+    env_file:
+      - .env
     volumes:
       - ./backend:/app 
       - uploads_volume:/app/uploads
@@ -164,10 +170,13 @@ services:
       backend:
         condition: service_healthy
     environment:
+      PYTHONPATH: .
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-changeme}@redis:6379/0
+    env_file:
+      - .env
     volumes:
       - ./backend:/app 
       - ./backend/logs:/app/logs

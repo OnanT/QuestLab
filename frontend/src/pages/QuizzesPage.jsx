@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiClient, useAuth } from "../App";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { HelpCircle, Clock, Star, ArrowLeft, Filter, CheckCircle, ListChecks } from "lucide-react";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 
 export default function QuizzesPage() {
   const { user } = useAuth();
@@ -103,7 +103,7 @@ export default function QuizzesPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="quizzes-page">
-      <StudentNav />
+      <UniversalNavbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

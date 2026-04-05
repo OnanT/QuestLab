@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { apiClient, useAuth } from "../App";
 import { Trophy, Medal, Star, ArrowLeft, Crown } from "lucide-react";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -35,7 +35,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="leaderboard-page">
-      <StudentNav />
+      <UniversalNavbar />
       
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

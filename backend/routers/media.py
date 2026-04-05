@@ -92,6 +92,35 @@ async def upload_media(
     }
 
 
+@router.get("/all-media", response_model=List[dict])
+def get_all_media(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ['teacher', 'parent', 'admin']:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view media")
+            
+    query = db.query(models.Media)
+    # If not admin, only show user's own media
+    if current_user.role != 'admin':
+        query = query.filter(models.Media.uploaded_by == current_user.id)
+        
+    media_list = query.order_by(models.Media.uploaded_at.desc()).all()
+    
+    return [
+        {
+            "id": media.id,
+            "filename": media.filename,
+            "filetype": media.filetype,
+            "url": media.url,
+            "category": media.file_category,
+            "uploaded_at": media.uploaded_at
+        }
+        for media in media_list
+    ]
+
+
 @router.get("/media/{lesson_id}", response_model=List[dict])
 def get_lesson_media(lesson_id: int, db: Session = Depends(get_db)):
     media_list = db.query(models.Media).filter(

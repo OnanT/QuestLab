@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { apiClient } from "../App";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
@@ -38,7 +38,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
-      <StudentNav />
+      <UniversalNavbar />
       
       <main className="max-w-3xl mx-auto px-4 py-8 pb-24 md:py-12">
         <div className="text-center mb-12 animate-fadeInUp">

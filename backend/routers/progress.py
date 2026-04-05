@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from typing import List, Dict
 from datetime import datetime
 
 import models, schemas
@@ -11,6 +11,44 @@ router = APIRouter(
     prefix="/progress",
     tags=["progress"],
 )
+
+
+@router.get("/parent/curriculum-status")
+def get_parent_curriculum_status(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get completion status for all children of a parent for each lesson.
+    """
+    if current_user.role != 'parent':
+        raise HTTPException(
+            status_code=403, detail="Only parents can view curriculum status")
+    
+    students = db.query(models.User).filter(models.User.parent_id == current_user.id).all()
+    student_ids = [s.id for s in students]
+    
+    if not student_ids:
+        return {}
+    
+    # Get all progress records for these students
+    progress_records = db.query(models.Progress).filter(
+        models.Progress.user_id.in_(student_ids)
+    ).all()
+    
+    # Group by lesson_id
+    status = {}
+    for p in progress_records:
+        if p.lesson_id not in status:
+            status[p.lesson_id] = []
+        status[p.lesson_id].append({
+            "student_id": p.user_id,
+            "completed": p.completed,
+            "score": p.score,
+            "completed_at": p.completed_at
+        })
+    
+    return status
 
 
 @router.post("", response_model=schemas.ProgressOut)
@@ -52,7 +90,7 @@ def create_progress(
     return db_progress
 
 
-@router.get("/user/{user_id}", response_model=List[schemas.ProgressOut])
+@router.get("/user/{user_id}", response_model=List[schemas.ProgressOutEnhanced])
 def get_user_progress(
     user_id: int,
     skip: int = 0,
@@ -81,8 +119,19 @@ def get_user_progress(
             raise HTTPException(
                 status_code=403, detail="Not authorized to view this user's progress")
 
-    progress_list = db.query(models.Progress).filter(
-        models.Progress.user_id == user_id).offset(skip).limit(limit).all()
+    # Join with Lesson to get titles
+    results = db.query(models.Progress, models.Lesson.title).outerjoin(
+        models.Lesson, models.Progress.lesson_id == models.Lesson.id
+    ).filter(models.Progress.user_id == user_id).order_by(
+        models.Progress.completed_at.desc()
+    ).offset(skip).limit(limit).all()
+    
+    progress_list = []
+    for p, title in results:
+        # Pydantic will pick up lesson_title if we set it on the object
+        p.lesson_title = title if title else "Unknown Lesson"
+        progress_list.append(p)
+        
     return progress_list
 
 

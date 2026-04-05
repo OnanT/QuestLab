@@ -57,3 +57,66 @@ async def send_welcome_email(email: EmailStr, username: str, role: str, user_id:
     except Exception as e:
         print(f"Failed to send email: {e}")
         return False
+
+
+async def send_feedback_notification(
+    recipient_email: EmailStr,
+    username: str,
+    role: str,
+    rating: int,
+    comment: str,
+    feedback_type: str,
+    lesson_title: str = None
+):
+    """
+    Send a notification email when new feedback is submitted.
+    """
+    template_body = {
+        "username": username,
+        "role": role,
+        "rating": rating,
+        "comment": comment,
+        "feedback_type": feedback_type,
+        "lesson_title": lesson_title,
+        "admin_url": f"{settings.FRONTEND_URL}/admin/feedback"
+    }
+
+    message = MessageSchema(
+        subject=f"New QuestLab Feedback: {feedback_type}",
+        recipients=[recipient_email],
+        template_body=template_body,
+        subtype=MessageType.html
+    )
+
+    fm = FastMail(conf)
+    try:
+        await fm.send_message(message, template_name="feedback_notification.html")
+        return True
+    except Exception as e:
+        print(f"Failed to send feedback notification email: {e}")
+        return False
+
+
+async def send_password_reset_email(email: EmailStr, otp_code: str):
+    """
+    Send an OTP email for password reset using HTML template.
+    """
+    template_body = {
+        "otp_code": otp_code,
+        "expiry_minutes": 15
+    }
+
+    message = MessageSchema(
+        subject="Your QuestLab Password Reset Verification Code",
+        recipients=[email],
+        template_body=template_body,
+        subtype=MessageType.html
+    )
+
+    fm = FastMail(conf)
+    try:
+        await fm.send_message(message, template_name="password_reset.html")
+        return True
+    except Exception as e:
+        print(f"Failed to send password reset email: {e}")
+        return False

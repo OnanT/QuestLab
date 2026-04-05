@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { apiClient } from "../App";
 import { Button } from "../components/ui/button";
 import { ArrowLeft, Clock, Star, BookOpen, ChevronRight, HelpCircle, Target, Award, Users } from "lucide-react";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 
 export default function LessonViewPage() {
   const { lessonId } = useParams();
@@ -115,7 +115,7 @@ export default function LessonViewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFFDF5]">
-        <StudentNav />
+        <UniversalNavbar />
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent"></div>
         </div>
@@ -126,7 +126,7 @@ export default function LessonViewPage() {
   if (!lesson) {
     return (
       <div className="min-h-screen bg-[#FFFDF5]">
-        <StudentNav />
+        <UniversalNavbar />
         <div className="max-w-4xl mx-auto px-4 py-12 text-center">
           <h1 className="text-2xl font-bold text-slate-900 mb-4">Lesson not found</h1>
           <Button onClick={() => navigate("/lessons")} className="bg-teal-600 hover:bg-teal-700">
@@ -140,7 +140,7 @@ export default function LessonViewPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]" data-testid="lesson-view-page">
-      <StudentNav />
+      <UniversalNavbar />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

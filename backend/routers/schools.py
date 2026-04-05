@@ -36,7 +36,8 @@ def create_school(
     db_school = models.School(
         name=school.name,
         island_id=school.island_id,
-        address=school.address
+        address=school.address,
+        organization_id=current_user.organization_id
     )
 
     try:

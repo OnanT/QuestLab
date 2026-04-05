@@ -22,7 +22,12 @@ import GamePlayerPage from "./pages/GamePlayerPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import AchievementsPage from "./pages/AchievementsPage";
 import AdminDashboard from "./pages/AdminDashboard";
-import ParentDashboard from "./pages/ParentDashboard";
+import ParentLayout from "./components/parent/ParentLayout";
+import ParentOverview from "./pages/parent/ParentOverview";
+import ParentChildren from "./pages/parent/ParentChildren";
+import ParentCurriculum from "./pages/parent/ParentCurriculum";
+import ParentReports from "./pages/parent/ParentReports";
+import ParentSettings from "./pages/parent/ParentSettings";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import FeedbackPage from "./pages/FeedbackPage";
 import ExitSurveyPage from "./pages/ExitSurveyPage";
@@ -263,7 +268,13 @@ function AppRouter() {
       <Route path="/admin/*" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
 
       {/* Parent */}
-      <Route path="/parent" element={<ProtectedRoute allowedRoles={["parent"]}><ParentDashboard /></ProtectedRoute>} />
+      <Route path="/parent" element={<ProtectedRoute allowedRoles={["parent"]}><ParentLayout /></ProtectedRoute>}>
+        <Route index element={<ParentOverview />} />
+        <Route path="children" element={<ParentChildren />} />
+        <Route path="curriculum" element={<ParentCurriculum />} />
+        <Route path="reports" element={<ParentReports />} />
+        <Route path="settings" element={<ParentSettings />} />
+      </Route>
 
       {/* Teacher */}
       <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={["teacher"]}><TeacherDashboard /></ProtectedRoute>} />

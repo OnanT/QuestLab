@@ -59,29 +59,42 @@ class UserUpdate(BaseModel):
     country: Optional[str] = None
     school: Optional[str] = None
     grade: Optional[int] = None
+    parent_id: Optional[int] = None
 
     class Config:
         orm_mode = True
 
 
+class UserUpdateAdmin(UserUpdate):
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+    points: Optional[int] = None
+    level: Optional[int] = None
+
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
+
 class UserOut(BaseModel):
     id: int
-    uuid: UUID
+    uuid: Optional[UUID] = None
     username: str
     email: str
-    display_name: Optional[str]
+    display_name: Optional[str] = None
     role: str
-    avatar: Optional[str]
-    points: int
-    level: int
+    avatar: Optional[str] = None
+    points: int = 0
+    level: int = 1
     badges: List[str] = []
-    streak: int
-    country: Optional[str]
-    school: Optional[str]
-    grade: Optional[int]
-    parent_id: Optional[int]
-    is_active: bool
-    created_at: datetime
+    streak: int = 0
+    country: Optional[str] = None
+    school: Optional[str] = None
+    grade: Optional[int] = None
+    parent_id: Optional[int] = None
+    is_active: bool = True
+    created_at: Optional[datetime] = None
 
     @field_validator('badges', mode='before')
     @classmethod
@@ -91,8 +104,14 @@ class UserOut(BaseModel):
         return v or []
 
     class Config:
-        orm_mode = True
         from_attributes = True
+
+
+class UserOutWithStats(UserOut):
+    total_points: int = 0
+    quizzes_completed: int = 0
+    games_played: int = 0
+    average_score: float = 0
 
 
 # ============================================================================
@@ -118,6 +137,32 @@ class PasswordResetVerify(BaseModel):
     otp_code: str = Field(..., min_length=6, max_length=6)
     new_password: str = Field(..., min_length=6)
 
+
+# ============================================================================
+# TOPICS & CONCEPTS SCHEMAS
+# ============================================================================
+
+class TopicBase(BaseModel):
+    title: str
+    curriculum_subject_id: Optional[int] = None
+    term_id: Optional[int] = None
+
+class TopicOut(TopicBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class ConceptBase(BaseModel):
+    title: str
+    topic_id: int
+
+class ConceptCreate(ConceptBase):
+    pass
+
+class ConceptOut(ConceptBase):
+    id: int
+    class Config:
+        from_attributes = True
 
 # ============================================================================
 # LESSON SCHEMAS
@@ -160,37 +205,55 @@ class LessonUpdate(BaseModel):
 
 class LessonOut(LessonBase):
     id: int
-    uuid: UUID # Changed from str to UUID
-    creator_id: Optional[int]
-    is_published: bool
-    is_featured: bool
-    view_count: int
-    completion_count: int
-    created_at: datetime
-    grade_levels: List[str] = [] # Added
+    uuid: Optional[UUID] = None
+    creator_id: Optional[int] = None
+    is_published: bool = True
+    is_featured: bool = False
+    view_count: Optional[int] = 0
+    completion_count: Optional[int] = 0
+    created_at: Optional[datetime] = None
+    grade_levels: List[str] = []
+
+    @field_validator('tags', 'grade_levels', mode='before')
+    @classmethod
+    def parse_comma_strings(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(',') if item.strip()]
+        return v or []
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 
 class LessonOutEnhanced(BaseModel):
     id: int
-    concept_id: Optional[int]
+    uuid: Optional[UUID] = None
+    concept_id: Optional[int] = None
     title: str
     content_html: str
-    creator_id: Optional[int]
-    created_at: datetime
+    creator_id: Optional[int] = None
+    created_at: Optional[datetime] = None
     category: str
     difficulty: str
     estimated_time: int
     points: int
-    grade_levels: List[str]
+    grade_levels: List[str] = []
     description: str
     objectives: str
     prerequisites: str
-    tags: List[str]
+    tags: List[str] = []
+    is_published: bool = True
+    is_featured: bool = False
+    view_count: Optional[int] = 0
+    completion_count: Optional[int] = 0
     subject_name: Optional[str] = None
+
+    @field_validator('tags', 'grade_levels', mode='before')
+    @classmethod
+    def parse_comma_strings(cls, v):
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(',') if item.strip()]
+        return v or []
 
     class Config:
         from_attributes = True
@@ -230,6 +293,21 @@ class QuizOut(QuizBase):
     class Config:
         orm_mode = True
         from_attributes = True
+
+
+class QuizUpdate(BaseModel):
+    lesson_id: Optional[int] = None
+    question: Optional[str] = None
+    question_type: Optional[str] = None
+    options: Optional[List[str]] = None
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
+    points: Optional[int] = None
+    difficulty: Optional[Difficulty] = None
+    time_limit: Optional[int] = None
+    image_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    tags: Optional[List[str]] = None
 
 
 class QuizOutEnhanced(BaseModel):
@@ -292,6 +370,10 @@ class ProgressOut(BaseModel):
     class Config:
         orm_mode = True
         from_attributes = True
+
+
+class ProgressOutEnhanced(ProgressOut):
+    lesson_title: Optional[str] = None
 
 
 # ============================================================================
@@ -390,6 +472,12 @@ class GameCreate(BaseModel):
     lesson_id: int
     game_engine_id: int
     config_json: dict
+
+
+class GameUpdate(BaseModel):
+    lesson_id: Optional[int] = None
+    game_engine_id: Optional[int] = None
+    config_json: Optional[dict] = None
 
 
 class GameOut(BaseModel):

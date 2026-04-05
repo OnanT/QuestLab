@@ -34,7 +34,7 @@ import {
   Menu, Hash, Type, CheckSquare,
   MessageSquare, Link, HashIcon
 } from "lucide-react";
-import StudentNav from "./StudentNav";
+import UniversalNavbar from "../components/UniversalNavbar";
 
 // ==================== CONSTANTS & DATA ====================
 const QUESTION_TYPES = [
@@ -1078,7 +1078,7 @@ D) Moon`}
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFFDF5]">
-        <StudentNav />
+        <UniversalNavbar />
         <div className="max-w-7xl mx-auto p-4 md:p-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -1093,7 +1093,7 @@ D) Moon`}
 
   return (
     <div className="min-h-screen bg-[#FFFDF5]">
-      <StudentNav />
+      <UniversalNavbar />
       
       {/* Tutorial Dialog */}
       <Dialog open={showTutorial && !isEditing} onOpenChange={setShowTutorial}>

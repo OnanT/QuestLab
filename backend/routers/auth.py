@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, timedelta
 import random
 import string
@@ -26,9 +27,9 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     - Triggers welcome email
     """
 
-    # Check if username exists
+    # Check if username exists (case-insensitive)
     existing_user = db.query(models.User).filter(
-        models.User.username == user.username
+        func.lower(models.User.username) == func.lower(user.username)
     ).first()
     if existing_user:
         raise HTTPException(
@@ -36,9 +37,9 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Username already exists"
         )
 
-    # Check if email exists
+    # Check if email exists (case-insensitive)
     existing_email = db.query(models.User).filter(
-        models.User.email == user.email
+        func.lower(models.User.email) == func.lower(user.email)
     ).first()
     if existing_email:
         raise HTTPException(
@@ -124,25 +125,41 @@ def forgot_password(request: schemas.PasswordResetRequest, db: Session = Depends
     """
     Generate OTP for password reset
     """
-    user = db.query(models.User).filter(models.User.email == request.email).first()
+    user = db.query(models.User).filter(
+        func.lower(models.User.email) == func.lower(request.email)
+    ).first()
     if not user:
         # We return 200 even if user not found for security reasons (prevent email enumeration)
         return {"message": "If your email is registered, you will receive an OTP shortly."}
 
-    # Generate 6-digit OTP
-    otp_code = ''.join(random.choices(string.digits, k=6))
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
-
-    # Store OTP in database (or replace if exists)
+    # Check for existing OTP and rate limit (60 seconds)
     existing_otp = db.query(models.PasswordResetOTP).filter(models.PasswordResetOTP.user_id == user.id).first()
     if existing_otp:
+        # Check if created_at is within the last 60 seconds
+        now = datetime.utcnow()
+        if existing_otp.created_at and (now - existing_otp.created_at).total_seconds() < 60:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Please wait 60 seconds before requesting another code."
+            )
+        
+        # Generate new OTP
+        otp_code = ''.join(random.choices(string.digits, k=6))
+        expires_at = now + timedelta(minutes=15)
+        
         existing_otp.otp_code = otp_code
         existing_otp.expires_at = expires_at
+        existing_otp.created_at = now # Update created_at for rate limiting
     else:
+        # Generate 6-digit OTP
+        otp_code = ''.join(random.choices(string.digits, k=6))
+        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        
         new_otp = models.PasswordResetOTP(
             user_id=user.id,
             otp_code=otp_code,
-            expires_at=expires_at
+            expires_at=expires_at,
+            created_at=datetime.utcnow()
         )
         db.add(new_otp)
 
@@ -159,7 +176,9 @@ def reset_password(request: schemas.PasswordResetVerify, db: Session = Depends(g
     """
     Verify OTP and reset password
     """
-    user = db.query(models.User).filter(models.User.email == request.email).first()
+    user = db.query(models.User).filter(
+        func.lower(models.User.email) == func.lower(request.email)
+    ).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -197,15 +216,15 @@ def login_for_access_token(
     - Returns JWT access token
     """
 
-    # Try to find user by username first
+    # Try to find user by username first (case-insensitive)
     user = db.query(models.User).filter(
-        models.User.username == form_data.username
+        func.lower(models.User.username) == func.lower(form_data.username)
     ).first()
 
-    # If not found by username, try email
+    # If not found by username, try email (case-insensitive)
     if not user:
         user = db.query(models.User).filter(
-            models.User.email == form_data.username
+            func.lower(models.User.email) == func.lower(form_data.username)
         ).first()
 
     # Verify credentials

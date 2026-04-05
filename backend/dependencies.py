@@ -4,11 +4,16 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+import logging
 from typing import List, Optional
 
 import models
 from database import SessionLocal
 from config import settings
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(
     schemes=["argon2", "bcrypt"],
@@ -58,13 +63,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
                              algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
+            logger.warning("JWT payload missing 'sub' claim")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
         raise credentials_exception
 
     user = db.query(models.User).filter(
         models.User.username == username).first()
     if user is None:
+        logger.warning(f"User '{username}' from JWT not found in database")
         raise credentials_exception
     return user
 

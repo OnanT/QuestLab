@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import logging
 
 import models
 from database import engine
@@ -9,7 +10,7 @@ from config import settings
 from routers import (
     auth, users, lessons, subjects, games, quizzes,
     progress, media, rewards, schools, leaderboard, badges, feedback, country,
-    admin, typing
+    admin, typing, concepts
 )
 from schemas import (
     UserCreate, UserOut, Token,
@@ -28,6 +29,25 @@ from schemas import (
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Quest Lab API", version="1.0.0")
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    if "authorization" in request.headers:
+        auth_header = request.headers["authorization"]
+        logger.info(f"Authorization header present: {auth_header[:15]}...")
+    else:
+        # Don't warn for public endpoints
+        public_paths = ["/login", "/register", "/health", "/docs", "/openapi.json"]
+        if not any(path in str(request.url) for path in public_paths):
+            logger.warning(f"Authorization header MISSING for {request.url}")
+    
+    response = await call_next(request)
+    return response
 
 # CORS Middleware
 app.add_middleware(
@@ -50,6 +70,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(lessons.router, prefix="/api")
 app.include_router(subjects.router, prefix="/api")
+app.include_router(concepts.router, prefix="/api")
 app.include_router(games.router, prefix="/api")
 app.include_router(quizzes.router, prefix="/api")
 app.include_router(progress.router, prefix="/api")

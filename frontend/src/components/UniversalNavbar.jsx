@@ -1,12 +1,12 @@
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../App";
-import { Button } from "../components/ui/button";
+import { Button } from "./ui/button";
 import { 
-  LogOut, Star, Award, Trophy, BookOpen, 
-  HelpCircle, Gamepad2, Home, User, Flame
+  LogOut, Trophy, Flame
 } from "lucide-react";
+import { navConfig, getHomeRoute } from "../config/navConfig";
 
-export default function StudentNav() {
+export default function UniversalNavbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,23 +16,8 @@ export default function StudentNav() {
     navigate("/");
   };
 
-  const getDefaultHome = () => {
-    if (!user) return "/";
-    switch (user.role) {
-      case "admin": return "/admin";
-      case "teacher": return "/teacher";
-      case "parent": return "/parent";
-      default: return "/dashboard";
-    }
-  };
-
-  const navLinks = [
-    { to: getDefaultHome(), icon: Home, label: "Home", testId: "mob-nav-home" },
-    { to: "/lessons", icon: BookOpen, label: "Lessons", testId: "mob-nav-lessons" },
-    { to: "/quizzes", icon: HelpCircle, label: "Quizzes", testId: "mob-nav-quizzes" },
-    { to: "/games", icon: Gamepad2, label: "Games", testId: "mob-nav-games" },
-    { to: "/achievements", icon: Award, label: "Awards", testId: "mob-nav-achievements" },
-  ];
+  const role = user?.role || "student";
+  const navLinks = navConfig[role] || navConfig.student;
 
   return (
     <>
@@ -41,17 +26,20 @@ export default function StudentNav() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
-            <Link to="/dashboard" className="flex items-center gap-3 group">
+            <Link to={getHomeRoute(role)} className="flex items-center gap-3 group">
               <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 group-hover:scale-105 transition-transform">
                 <span className="text-white font-bold text-xl md:text-2xl font-accent">Q</span>
               </div>
-              <span className="text-xl md:text-2xl font-bold font-heading text-slate-800 tracking-tight">QuestLab</span>
+              <div className="hidden sm:block">
+                <span className="text-xl md:text-2xl font-bold font-heading text-slate-800 tracking-tight block leading-none">QuestLab</span>
+                <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest leading-none mt-1">{role} portal</span>
+              </div>
             </Link>
 
             {/* Desktop Links */}
             <div className="hidden md:flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
               {navLinks.map(({ to, icon: Icon, label }) => {
-                const isActive = location.pathname === to;
+                const isActive = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
                 return (
                   <Link
                     key={to}
@@ -71,23 +59,26 @@ export default function StudentNav() {
 
             {/* User Stats & Actions */}
             <div className="flex items-center gap-2 md:gap-4">
-              {/* Streak */}
-              <div 
-                className="hidden sm:flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
-                aria-label={`${user?.streak || 0} day streak`}
-              >
-                <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
-                <span className="font-bold text-orange-700 text-sm" aria-hidden="true">{user?.streak || 0}</span>
-              </div>
+              {/* Student-specific stats */}
+              {role === "student" && (
+                <>
+                  <div 
+                    className="hidden sm:flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100"
+                    aria-label={`${user?.streak || 0} day streak`}
+                  >
+                    <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                    <span className="font-bold text-orange-700 text-sm" aria-hidden="true">{user?.streak || 0}</span>
+                  </div>
 
-              {/* Level */}
-              <div 
-                className="hidden sm:flex items-center gap-1.5 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100"
-                aria-label={`Level ${user?.level || 1}`}
-              >
-                <Trophy className="w-4 h-4 text-teal-600" />
-                <span className="font-bold text-teal-700 text-sm" aria-hidden="true">Lvl {user?.level || 1}</span>
-              </div>
+                  <div 
+                    className="hidden sm:flex items-center gap-1.5 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100"
+                    aria-label={`Level ${user?.level || 1}`}
+                  >
+                    <Trophy className="w-4 h-4 text-teal-600" />
+                    <span className="font-bold text-teal-700 text-sm" aria-hidden="true">Lvl {user?.level || 1}</span>
+                  </div>
+                </>
+              )}
 
               {/* Avatar Link */}
               <div className="flex items-center gap-2 pl-2 border-l border-slate-200 ml-2">
@@ -125,7 +116,7 @@ export default function StudentNav() {
         aria-label="Mobile navigation"
       >
         {navLinks.map(({ to, icon: Icon, label, testId }) => {
-          const isActive = location.pathname === to;
+          const isActive = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
           return (
             <Link
               key={to}
