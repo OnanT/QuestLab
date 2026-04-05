@@ -12,81 +12,72 @@ To provide engaging, game-first learning experiences that are culturally relevan
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] **AUTH-01**: User (student, teacher, admin) can create and manage an account, including secure authentication and authorization.
+- [x] **LEARN-01**: Students can engage with learning content delivered as structured quests.
+- [x] **CONT-01**: Learning content incorporates Caribbean history, geography, folklore, heroes, and environments.
+- [x] **CURR-01**: Curriculum lessons are aligned with Grades 1-6 educational standards.
+- [x] **FEED-01**: Students receive immediate feedback through quizzes and interactive elements.
+- [x] **PROG-01**: Student progression is tracked based on mastery and participation.
+- [x] **ADMIN-02**: Admin/Teachers can create, edit, and organize lessons, quizzes, and games (Content Management).
+- [x] **ADMIN-03**: Admin can configure school, grade, and subject structures.
+- [x] **UIX-01**: The platform features UI, navigation, rewards, and story elements designed to feel like an adventure game.
+- [x] **GAME-04**: XP and level progression systems provide visible achievement and encourage engagement.
+- [x] **GAME-05**: Achievements and badges are awarded for milestones and effort.
 
 ### Active
 
-- [ ] **AUTH-01**: User (student, teacher, admin) can create and manage an account, including secure authentication and authorization.
-- [ ] **LEARN-01**: Students can engage with learning content delivered as structured quests.
-- [ ] **CONT-01**: Learning content incorporates Caribbean history, geography, folklore, heroes, and environments.
-- [ ] **CURR-01**: Curriculum lessons are aligned with Grades 1-6 educational standards.
-- [ ] **FEED-01**: Students receive immediate feedback through quizzes and interactive elements.
-- [ ] **PROG-01**: Student progression is tracked based on mastery and participation.
-- [ ] **PROG-02**: Mastery indicators are displayed for topics and quests.
+- [ ] **PROG-02**: Mastery indicators are displayed for topics and quests. (Partial: Progress tracking exists, UI indicators need verification).
 - [ ] **PROG-03**: Time-on-task and attempt metrics are collected for detailed insights.
 - [ ] **ADMIN-01**: Schools/administrators can access centralized dashboards for student progress and curriculum organization.
-- [ ] **ADMIN-02**: Admin/Teachers can create, edit, and organize lessons, quizzes, and games (Content Management).
-- [ ] **ADMIN-03**: Admin can configure school, grade, and subject structures.
 - [ ] **ADMIN-04**: Teachers/Admins can view detailed student activity and performance.
-- [ ] **UIX-01**: The platform features UI, navigation, rewards, and story elements designed to feel like an adventure game.
 - [ ] **GAME-01**: Students can engage with learning content through interactive gameplay loops.
 - [ ] **GAME-02**: Mini-games reinforcing lesson objectives are integrated into learning paths.
 - [ ] **GAME-03**: Story hooks and contextual challenges are embedded to drive narrative immersion.
-- [ ] **GAME-04**: XP and level progression systems provide visible achievement and encourage engagement.
-- [ ] **GAME-05**: Achievements and badges are awarded for milestones and effort.
-- [ ] **GAME-06**: In-game currency and unlockables are available for learners to customize their experience.
+- [ ] **GAME-06**: In-game currency and unlockables are available for learners to customize their experience. (Partial: Rewards/Badges exist, currency logic needs verification).
 
 ### Out of Scope
 
-- Secondary education (Forms 1–5 / high school) support in Phase 1 — This is a Phase 2 expansion.
-- Aggressive monetization beyond freemium and school pilot programs in Phase 1 — Phase 1 focuses on validation and adoption.
-- Advanced analytics and standardized testing alignment (e.g., CSEC/CXC) in Phase 1 — These are Phase 2+ features.
+- Secondary education (Forms 1–5 / high school) support in Phase 1.
+- Advanced analytics beyond basic progress in initial pilot.
 
 ## Context
 
-- **Existing Code:** Brownfield detection indicated no significant existing codebase, so this is a greenfield project.
-- **Technology Stack:** Frontend: React/TypeScript (Vite, Tailwind CSS, React Router, Axios). Backend: Python (FastAPI, SQLAlchemy, PostgreSQL). Infrastructure: Docker, Nginx, Certbot.
-- **User Research:** Detailed user needs identified for students, teachers, schools, and parents.
-- **Pedagogy:** Emphasizes storytelling, exploration, and cultural relevance to increase engagement and comprehension.
-
-## Constraints
-
-- **Phase 1 Scope**: Focus strictly on Grades 1-6 (Primary Education).
-- **Business Model**: Freemium core content with premium features for school licenses/classroom subscriptions and optional parent subscriptions in Phase 1. Grants and education partnerships for funding.
-- **Timeline**: Implicit in Phase 1 validation and adoption goals; needs to be quick enough to gather feedback effectively.
-- **Resources**: Assumed to be constrained, driving focus on MVP for Phase 1.
+- **Technology Stack:** Frontend: React 19, Vite 7, Tailwind CSS 4, React Router 6. Backend: FastAPI 0.128, SQLAlchemy 2.0, PostgreSQL 15.
+- **Architecture:** Decoupled service-oriented architecture with Nginx reverse proxy and Docker orchestration.
+- **Testing:** Playwright for E2E, Pytest for backend integration tests.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |---|---|---|
-| Game-first approach | To maximize student engagement and make learning feel like play, not schoolwork. | — Pending |
-| Caribbean cultural relevance | To increase engagement, comprehension, and address the lack of culturally relatable learning experiences. | — Pending |
-| Freemium + School Pilot business model for Phase 1 | To prioritize validation and adoption, gather feedback, and establish product-market fit before aggressive monetization. | — Pending |
+| Game-first approach | To maximize student engagement. | Success - Core loop implemented |
+| Caribbean cultural relevance | To increase engagement and addressing the lack of culturally relatable learning experiences. | Ongoing - Seeding content |
+| React 19 + Tailwind 4 | Use latest stable features for performance and DX. | Implemented |
+| Modular FastAPI Routers | Maintainability as the feature set grows. | Implemented |
 
 ---
-*Last updated: February 4, 2026 after initialization*
+*Last updated: April 5, 2026*
 
 ## Traceability
 
-| Requirement | Phase | Status |
+| Requirement | Status | Verification |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| LEARN-01 | Phase 1 | Pending |
-| CONT-01 | Phase 1 | Pending |
-| CURR-01 | Phase 1 | Pending |
-| FEED-01 | Phase 1 | Pending |
-| PROG-01 | Phase 1 | Pending |
-| PROG-02 | Phase 1 | Pending |
-| PROG-03 | Phase 2 | Pending |
-| ADMIN-01 | Phase 2 | Pending |
-| ADMIN-02 | Phase 1 | Pending |
-| ADMIN-03 | Phase 1 | Pending |
-| ADMIN-04 | Phase 2 | Pending |
-| UIX-01 | Phase 1 | Pending |
-| GAME-01 | Phase 2 | Pending |
-| GAME-02 | Phase 3 | Pending |
-| GAME-03 | Phase 2 | Pending |
-| GAME-04 | Phase 2 | Pending |
-| GAME-05 | Phase 2 | Pending |
-| GAME-06 | Phase 3 | Pending |
+| AUTH-01 | Completed | `auth.py`, `users.py`, `LoginPage.jsx` |
+| LEARN-01 | Completed | `lessons.py`, `LessonsPage.jsx` |
+| CONT-01 | Completed | Content in DB (Seeding) |
+| CURR-01 | Completed | `subjects.py`, `concepts.py` |
+| FEED-01 | Completed | `feedback.py`, `quizzes.py`, `FeedbackModal.jsx` |
+| PROG-01 | Completed | `progress.py`, `StudentDashboard.jsx` |
+| PROG-02 | Partial | `progress.py` |
+| PROG-03 | Pending | |
+| ADMIN-01 | Partial | `AdminDashboard.jsx` |
+| ADMIN-02 | Completed | `admin.py`, `CreateLessonPage.jsx` |
+| ADMIN-03 | Completed | `schools.py`, `subjects.py` |
+| ADMIN-04 | Partial | `TeacherDashboard.jsx` |
+| UIX-01 | Completed | `UniversalNavbar.jsx`, `LandingPage.jsx` |
+| GAME-01 | Partial | `games.py`, `GamePlayerPage.jsx` |
+| GAME-02 | Partial | `typing.py`, `typing_game.spec.ts` |
+| GAME-03 | Partial | Lesson narratives |
+| GAME-04 | Completed | `progress.py`, `leaderboard.py` |
+| GAME-05 | Completed | `badges.py`, `AchievementsPage.jsx` |
+| GAME-06 | Partial | `rewards.py` |
