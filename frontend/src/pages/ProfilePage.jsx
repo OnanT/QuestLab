@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth, apiClient } from "../App";
 import UniversalNavbar from "../components/UniversalNavbar";
 import AvatarSelector from "../components/AvatarSelector";
+import CountrySelect from "../components/CountrySelect";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -25,6 +26,10 @@ export default function ProfilePage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCountryChange = (val) => {
+    setFormData(prev => ({ ...prev, country: val }));
   };
 
   const handleAvatarSelect = async (selection, isUpload) => {
@@ -133,16 +138,10 @@ export default function ProfilePage() {
                   <div className="grid md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Country</Label>
-                      <div className="relative group">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
-                        <Input
-                          name="country"
-                          value={formData.country}
-                          onChange={handleChange}
-                          className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 focus:bg-white transition-all font-medium"
-                          placeholder="e.g. St. Kitts"
-                        />
-                      </div>
+                      <CountrySelect 
+                        value={formData.country} 
+                        onValueChange={handleCountryChange} 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grade</Label>

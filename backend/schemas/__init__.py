@@ -24,6 +24,10 @@ class Difficulty(str, Enum):
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+    EXPERT = "expert"
 
 
 # ============================================================================
@@ -62,7 +66,7 @@ class UserUpdate(BaseModel):
     parent_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserUpdateAdmin(UserUpdate):
@@ -93,7 +97,7 @@ class UserOut(BaseModel):
     school: Optional[str] = None
     grade: Optional[int] = None
     parent_id: Optional[int] = None
-    is_active: bool = True
+    is_active: Optional[bool] = True
     created_at: Optional[datetime] = None
 
     @field_validator('badges', mode='before')
@@ -108,10 +112,10 @@ class UserOut(BaseModel):
 
 
 class UserOutWithStats(UserOut):
-    total_points: int = 0
-    quizzes_completed: int = 0
-    games_played: int = 0
-    average_score: float = 0
+    total_points: Optional[int] = 0
+    quizzes_completed: Optional[int] = 0
+    games_played: Optional[int] = 0
+    average_score: Optional[float] = 0
 
 
 # ============================================================================
@@ -141,6 +145,17 @@ class PasswordResetVerify(BaseModel):
 # ============================================================================
 # TOPICS & CONCEPTS SCHEMAS
 # ============================================================================
+
+class CurriculumSubjectBase(BaseModel):
+    subject_id: int
+    country_id: Optional[int] = None
+    grade_level: int
+
+class CurriculumSubjectOut(CurriculumSubjectBase):
+    id: int
+    subject_name: Optional[str] = None
+    class Config:
+        from_attributes = True
 
 class TopicBase(BaseModel):
     title: str
@@ -291,7 +306,7 @@ class QuizOut(QuizBase):
     lesson_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -352,6 +367,7 @@ class QuizResult(BaseModel):
 # ============================================================================
 
 class ProgressCreate(BaseModel):
+    user_id: Optional[int] = None
     lesson_id: int
     score: Optional[int] = None
     completed: bool = False
@@ -368,7 +384,7 @@ class ProgressOut(BaseModel):
     total_time_spent_seconds: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -394,7 +410,7 @@ class RewardOut(BaseModel):
     for_user_id: Optional[int]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -411,7 +427,7 @@ class SubjectOut(BaseModel):
     name: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -438,7 +454,7 @@ class CountryOut(BaseModel):
     name: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -460,7 +476,7 @@ class SchoolOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -493,7 +509,7 @@ class GameOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -542,7 +558,7 @@ class AssignmentOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 
@@ -565,7 +581,7 @@ class FeedbackOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         from_attributes = True
 
 

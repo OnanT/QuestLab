@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../App";
+import { useAuth, apiClient } from "../App";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import CountrySelect from "../components/CountrySelect";
 import { toast } from "sonner";
-import axios from "axios";
 import { 
-  User, Mail, Lock, Eye, EyeOff, School, Users, MapPin, GraduationCap,
-  ArrowLeft, ShieldCheck, Sparkles, UserCircle, ChevronRight
+  User, Mail, Lock, Eye, EyeOff, School, Users, GraduationCap,
+  ArrowLeft, Sparkles, ChevronRight
 } from "lucide-react";
 
 export default function RegisterPage() {
@@ -26,40 +26,26 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [countries, setCountries] = useState([]);
   const [schools, setSchools] = useState([]);
   const [selectedCountryId, setSelectedCountryId] = useState(null);
   
-  const { register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
-
-  // Fetch countries on mount
-  useEffect(() => {
-    const fetchCountries = async () => {
-      try {
-        const response = await axios.get("/api/country");
-        setCountries(response.data);
-      } catch (error) {
-        console.error("Error fetching countries:", error);
-      }
-    };
-    fetchCountries();
-  }, []);
 
   // Fetch schools when country changes
   useEffect(() => {
-    if (!selectedCountryId) {
-      setSchools([]);
-      return;
-    }
-    const fetchSchools = async () => {
+    async function fetchSchools() {
+      if (!selectedCountryId) {
+        setSchools([]);
+        return;
+      }
       try {
-        const response = await axios.get(`/api/schools?island_id=${selectedCountryId}`);
+        const response = await apiClient.get(`/schools?island_id=${selectedCountryId}`);
         setSchools(response.data);
       } catch (error) {
         console.error("Error fetching schools:", error);
       }
-    };
+    }
     fetchSchools();
   }, [selectedCountryId]);
 
@@ -76,10 +62,15 @@ export default function RegisterPage() {
     }));
   };
 
-  const handleCountryChange = (value) => {
-    const country = countries.find(c => c.name === value);
+  const handleCountryChange = async (value) => {
     setFormData(prev => ({ ...prev, country: value, school: "" }));
-    setSelectedCountryId(country?.id || null);
+    try {
+      const res = await apiClient.get("/country");
+      const country = res.data.find(c => c.name === value);
+      setSelectedCountryId(country?.id || null);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleSchoolChange = (value) => {
@@ -95,7 +86,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const userData = {
+      const registrationPayload = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
@@ -103,16 +94,25 @@ export default function RegisterPage() {
         country: formData.country || null,
         school: formData.school || null,
         grade: formData.grade ? parseInt(formData.grade) : null,
+        parent_id: formData.parentId ? parseInt(formData.parentId) : null,
       };
-      if (formData.role === "student" && formData.parentId) {
-        userData.parent_id = parseInt(formData.parentId);
-      }
 
-      await register(userData);
+      await apiClient.post("/auth/register", registrationPayload);
       toast.success("Account created! Let's get started.");
-      navigate("/login");
+      
+      // Auto-login
+      const loginRes = await apiClient.post("/auth/token", new URLSearchParams({
+        username: formData.username,
+        password: formData.password,
+      }), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      
+      login(loginRes.data.access_token);
+      navigate(formData.role === "student" ? "/dashboard" : (formData.role === "teacher" ? "/teacher" : "/parent"));
     } catch (error) {
       console.error("Registration error:", error);
+      toast.error(error.response?.data?.detail || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -130,8 +130,8 @@ export default function RegisterPage() {
               <span className="text-xs font-bold uppercase tracking-widest">Back</span>
             </Link>
             
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 border border-white/20">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 border border-white/20 overflow-hidden p-3">
+              <img src="/questlab-logo.png" alt="QuestLab" className="w-full h-full object-contain brightness-0 invert" />
             </div>
             <h2 className="text-3xl font-black font-heading text-white leading-tight mb-4">Start Your Quest!</h2>
             <p className="text-teal-100 font-medium text-sm leading-relaxed opacity-90">
@@ -186,13 +186,13 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Account Type</Label>
                 <Select value={formData.role} onValueChange={handleRoleChange}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all">
+                  <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-bold text-sm">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student" className="font-bold text-slate-700">Student</SelectItem>
-                    <SelectItem value="parent" className="font-bold text-slate-700">Parent</SelectItem>
-                    <SelectItem value="teacher" className="font-bold text-slate-700">Teacher</SelectItem>
+                  <SelectContent className="rounded-xl border-2 border-slate-100 shadow-xl">
+                    <SelectItem value="student" className="py-3 font-bold focus:bg-teal-50 focus:text-teal-600 rounded-lg">Student</SelectItem>
+                    <SelectItem value="parent" className="py-3 font-bold focus:bg-purple-50 focus:text-purple-600 rounded-lg">Parent</SelectItem>
+                    <SelectItem value="teacher" className="py-3 font-bold focus:bg-orange-50 focus:text-orange-600 rounded-lg">Teacher</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -257,18 +257,10 @@ export default function RegisterPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Country</Label>
-                <Select value={formData.country} onValueChange={handleCountryChange}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-medium text-sm">
-                    <SelectValue placeholder="Select Country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((c) => (
-                      <SelectItem key={c.id} value={c.name} className="font-bold text-slate-700">
-                        {c.flag_emoji} {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CountrySelect 
+                  value={formData.country} 
+                  onValueChange={handleCountryChange} 
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Grade</Label>
@@ -288,22 +280,25 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">School</Label>
-              <Select 
-                value={formData.school} 
-                onValueChange={handleSchoolChange}
-                disabled={!formData.country || schools.length === 0}
-              >
-                <SelectTrigger className="h-12 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-medium text-sm">
-                  <SelectValue placeholder={!formData.country ? "Select Country First" : (schools.length === 0 ? "No Schools Found" : "Select School")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {schools.map((s) => (
-                    <SelectItem key={s.id} value={s.name} className="font-bold text-slate-700">
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative group">
+                <School className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors z-10" />
+                <Select 
+                  value={formData.school} 
+                  onValueChange={handleSchoolChange}
+                  disabled={!formData.country || schools.length === 0}
+                >
+                  <SelectTrigger className="h-12 pl-11 rounded-xl border-2 border-slate-100 bg-slate-50/50 focus:border-teal-500 transition-all font-medium text-sm text-left">
+                    <SelectValue placeholder={!formData.country ? "Select Country First" : (schools.length === 0 ? "No Schools Found" : "Select School")} />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-2 border-slate-100 shadow-xl max-h-[200px]">
+                    {schools.map((s) => (
+                      <SelectItem key={s.id} value={s.name} className="py-3 font-medium focus:bg-teal-50 focus:text-teal-600 rounded-lg">
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {formData.role === "student" && (
@@ -317,7 +312,7 @@ export default function RegisterPage() {
                       type="number"
                       value={formData.parentId}
                       onChange={handleChange}
-                      className="h-10 pl-11 bg-white border-teal-100 text-sm"
+                      className="h-10 pl-11 bg-white border-teal-100 text-sm rounded-lg"
                       placeholder="Enter Parent ID"
                     />
                   </div>

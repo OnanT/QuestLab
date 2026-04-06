@@ -6,6 +6,7 @@ export const navConfig = {
     { to: "/lessons", icon: BookOpen, label: "Lessons", testId: "nav-student-lessons" },
     { to: "/quizzes", icon: HelpCircle, label: "Quizzes", testId: "nav-student-quizzes" },
     { to: "/games", icon: Gamepad2, label: "Games", testId: "nav-student-games" },
+    { to: "/leaderboard", icon: Trophy, label: "Leaderboard", testId: "nav-student-leaderboard" },
     { to: "/achievements", icon: Award, label: "Awards", testId: "nav-student-achievements" },
   ],
   teacher: [
@@ -13,6 +14,7 @@ export const navConfig = {
     { to: "/teacher/students", icon: Users, label: "My Class", testId: "nav-teacher-students" },
     { to: "/lessons", icon: BookOpen, label: "Lessons", testId: "nav-teacher-lessons" },
     { to: "/quizzes", icon: HelpCircle, label: "Quizzes", testId: "nav-teacher-quizzes" },
+    { to: "/leaderboard", icon: Trophy, label: "Leaderboard", testId: "nav-teacher-leaderboard" },
   ],
   parent: [
     { to: "/parent", icon: Home, label: "Dashboard", testId: "nav-parent-home" },

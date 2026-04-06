@@ -27,8 +27,8 @@ export default function UniversalNavbar() {
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <Link to={getHomeRoute(role)} className="flex items-center gap-3 group">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20 group-hover:scale-105 transition-transform">
-                <span className="text-white font-bold text-xl md:text-2xl font-accent">Q</span>
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/10 group-hover:scale-105 transition-transform overflow-hidden p-1 border border-slate-100">
+                <img src="/questlab-logo.png" alt="QuestLab" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
                 <span className="text-xl md:text-2xl font-bold font-heading text-slate-800 tracking-tight block leading-none">QuestLab</span>

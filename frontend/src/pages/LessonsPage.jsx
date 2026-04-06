@@ -31,9 +31,13 @@ export default function LessonsPage() {
   
   const difficulties = [
     { id: "all", name: "All Levels", color: "bg-slate-100" },
+    { id: "easy", name: "Easy", color: "bg-teal-100 text-teal-700" },
     { id: "beginner", name: "Beginner", color: "bg-green-100 text-green-700" },
+    { id: "medium", name: "Medium", color: "bg-blue-100 text-blue-700" },
     { id: "intermediate", name: "Intermediate", color: "bg-yellow-100 text-yellow-700" },
     { id: "advanced", name: "Advanced", color: "bg-red-100 text-red-700" },
+    { id: "hard", name: "Hard", color: "bg-orange-100 text-orange-700" },
+    { id: "expert", name: "Expert", color: "bg-purple-100 text-purple-700" },
   ];
 
   useEffect(() => {
@@ -54,10 +58,10 @@ export default function LessonsPage() {
         title: lesson.title,
         description: lesson.content_html?.substring(0, 100) + "...",
         subject_name: getCategoryName(lesson),
-        difficulty: getRandomDifficulty(),
-        estimated_time: Math.floor(Math.random() * 30) + 15,
-        points: Math.floor(Math.random() * 100) + 50,
-        grade_levels: ["Grade 6", "Grade 7"],
+        difficulty: lesson.difficulty || "beginner",
+        estimated_time: lesson.estimated_time || Math.floor(Math.random() * 30) + 15,
+        points: lesson.points || Math.floor(Math.random() * 100) + 50,
+        grade_levels: lesson.grade_levels || ["Grade 6", "Grade 7"],
         content: lesson.content_html,
         category: getCategoryFromTitle(lesson.title),
         popularity: Math.floor(Math.random() * 100),
@@ -79,11 +83,6 @@ export default function LessonsPage() {
   const getCategoryName = (lesson) => {
     const categories = ["Math", "Science", "History", "Language", "Art", "Technology"];
     return categories[lesson.id % categories.length] || "General";
-  };
-
-  const getRandomDifficulty = () => {
-    const difficulties = ["beginner", "intermediate", "advanced"];
-    return difficulties[Math.floor(Math.random() * difficulties.length)];
   };
 
   const getCategoryFromTitle = (title) => {
@@ -124,12 +123,8 @@ export default function LessonsPage() {
   };
 
   const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case "beginner": return "bg-green-100 text-green-700";
-      case "intermediate": return "bg-amber-100 text-amber-700";
-      case "advanced": return "bg-red-100 text-red-700";
-      default: return "bg-slate-100 text-slate-700";
-    }
+    const diff = difficulties.find(d => d.id === difficulty);
+    return diff ? diff.color : "bg-slate-100 text-slate-700";
   };
 
   const getCategoryColor = (category) => {
@@ -225,7 +220,7 @@ export default function LessonsPage() {
               <h1 className="text-3xl font-bold font-heading text-slate-900 mb-2">Explore Lessons</h1>
               <p className="text-slate-600">Discover interactive lessons tailored for Caribbean students</p>
             </div>
-            <Link to="/lessons/create">
+            <Link to="/teacher/create-lesson">
               <Button className="bg-teal-600 hover:bg-teal-700 text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Lesson

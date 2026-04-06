@@ -8,6 +8,7 @@ import {
   LogOut, ChevronRight, Star, Medal, Plus, RefreshCw, 
   AlertCircle, Search, Filter, Activity, Settings, UserCircle
 } from "lucide-react";
+import CreateLessonPage from "./CreateLessonPage";
 
 // Sidebar Component
 function TeacherSidebar({ user, onLogout }) {
@@ -353,6 +354,8 @@ export default function TeacherDashboard() {
         <Routes>
           <Route index element={<TeacherOverview {...teacherData} />} />
           <Route path="students" element={<TeacherStudents {...teacherData} />} />
+          <Route path="create-lesson" element={<CreateLessonPage />} />
+          <Route path="edit-lesson/:lessonId" element={<CreateLessonPage />} />
         </Routes>
       </main>
     </div>

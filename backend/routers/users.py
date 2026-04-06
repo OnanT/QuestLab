@@ -92,7 +92,8 @@ async def upload_avatar(
     db: Session = Depends(get_db)
 ):
     """
-    Upload and set user avatar
+    Upload and set user avatar. 
+    Deletes the previous avatar file if it exists and is not the default.
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -103,13 +104,30 @@ async def upload_avatar(
     file_path = UPLOAD_DIR / filename
 
     try:
+        # Delete old avatar if it exists and isn't the default
+        if current_user.avatar and "default_avatar.png" not in current_user.avatar:
+            # Extract filename from URL (e.g., /uploads/avatars/old.png -> avatars/old.png)
+            old_avatar_rel_path = current_user.avatar.lstrip("/")
+            # Base directory for uploads is "uploads" (mounted in main.py)
+            # UPLOAD_DIR is "uploads/avatars"
+            # So if avatar is "/uploads/avatars/file.png", we need to find it relative to project root
+            # But the static mount in main.py is app.mount("/uploads", StaticFiles(directory="uploads"))
+            # So /uploads/avatars/file.png maps to uploads/avatars/file.png
+            old_file_path = Path(old_avatar_rel_path)
+            if old_file_path.exists():
+                try:
+                    old_file_path.unlink()
+                except Exception as e:
+                    print(f"Warning: Could not delete old avatar {old_file_path}: {e}")
+
+        # Save new avatar
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Could not process avatar: {str(e)}")
 
     # Update user avatar URL
-    # Assuming the app mounts /uploads to serve files
+    # We use the relative path that matches the static mount
     current_user.avatar = f"/uploads/avatars/{filename}"
     db.commit()
     db.refresh(current_user)

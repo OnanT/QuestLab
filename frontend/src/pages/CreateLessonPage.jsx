@@ -48,9 +48,12 @@ const QUESTION_TYPES = [
 ];
 
 const DIFFICULTY_LEVELS = [
+  { id: 'easy', name: 'Easy', color: 'bg-teal-100 text-teal-700', points: 5 },
   { id: 'beginner', name: 'Beginner', color: 'bg-green-100 text-green-700', points: 10 },
+  { id: 'medium', name: 'Medium', color: 'bg-blue-100 text-blue-700', points: 15 },
   { id: 'intermediate', name: 'Intermediate', color: 'bg-yellow-100 text-yellow-700', points: 20 },
   { id: 'advanced', name: 'Advanced', color: 'bg-red-100 text-red-700', points: 30 },
+  { id: 'hard', name: 'Hard', color: 'bg-orange-100 text-orange-700', points: 40 },
   { id: 'expert', name: 'Expert', color: 'bg-purple-100 text-purple-700', points: 50 },
 ];
 
@@ -95,10 +98,69 @@ export default function CreateLessonPage() {
     description: '',
     objectives: '',
     prerequisites: '',
-    tags: []
+    tags: [],
+    concept_id: null
   });
 
+  // Curriculum state
+  const [curriculumSubjects, setCurriculumSubjects] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [concepts, setConcepts] = useState([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [selectedTopicId, setSelectedTopicId] = useState("");
+
   const [questions, setQuestions] = useState([]);
+  // ... rest of state ...
+
+  // ... existing effects ...
+
+  useEffect(() => {
+    fetchCurriculumSubjects();
+  }, []);
+
+  useEffect(() => {
+    if (selectedSubjectId) {
+      fetchTopics(selectedSubjectId);
+    } else {
+      setTopics([]);
+      setConcepts([]);
+    }
+  }, [selectedSubjectId]);
+
+  useEffect(() => {
+    if (selectedTopicId) {
+      fetchConcepts(selectedTopicId);
+    } else {
+      setConcepts([]);
+    }
+  }, [selectedTopicId]);
+
+  const fetchCurriculumSubjects = async () => {
+    try {
+      const res = await apiClient.get("/curriculum/subjects");
+      setCurriculumSubjects(res.data);
+    } catch (err) {
+      console.error("Failed to fetch subjects", err);
+    }
+  };
+
+  const fetchTopics = async (curriculumSubjectId) => {
+    try {
+      const res = await apiClient.get(`/curriculum/topics?curriculum_subject_id=${curriculumSubjectId}`);
+      setTopics(res.data);
+    } catch (err) {
+      console.error("Failed to fetch topics", err);
+    }
+  };
+
+  const fetchConcepts = async (topicId) => {
+    try {
+      const res = await apiClient.get(`/curriculum/concepts?topic_id=${topicId}`);
+      setConcepts(res.data);
+    } catch (err) {
+      console.error("Failed to fetch concepts", err);
+    }
+  };
   const [currentQuestion, setCurrentQuestion] = useState({
     type: 'mc_single',
     text: '',
@@ -177,8 +239,14 @@ export default function CreateLessonPage() {
         description: lessonData.description || '',
         objectives: lessonData.objectives || '',
         prerequisites: lessonData.prerequisites || '',
-        tags: lessonData.tags || []
+        tags: lessonData.tags || [],
+        concept_id: lessonData.concept_id
       });
+
+      // If there's a concept_id, we should try to set the subject and topic
+      // This is a bit complex since we need to know the hierarchy
+      // For now, let's just set the concept_id
+      // In a full implementation, we'd fetch the concept details to get topic_id, etc.
 
       // Fetch questions
       const quizzesRes = await apiClient.get(`/quizzes?lesson_id=${lessonId}`);
@@ -230,7 +298,8 @@ export default function CreateLessonPage() {
         description: lesson.description,
         objectives: lesson.objectives,
         prerequisites: lesson.prerequisites,
-        tags: lesson.tags
+        tags: lesson.tags,
+        concept_id: lesson.concept_id
       };
 
       let savedLessonId = lessonId;
@@ -1176,11 +1245,12 @@ D) Moon`}
               </div>
             </div>
             
-            <div className="prose max-w-none">
+            <div className="prose prose-slate max-w-none prose-headings:font-heading prose-headings:font-bold prose-h2:text-xl prose-h3:text-lg prose-p:text-slate-700 prose-li:text-slate-700">
               <h3>Lesson Content</h3>
-              <div className="whitespace-pre-wrap bg-gray-50 p-4 rounded">
-                {lesson.content || "No content yet"}
-              </div>
+              <div 
+                className="whitespace-pre-wrap bg-gray-50 p-4 rounded border"
+                dangerouslySetInnerHTML={{ __html: lesson.content || "<p>No content yet</p>" }}
+              />
             </div>
             
             {questions.length > 0 && (
@@ -1501,9 +1571,67 @@ D) Moon`}
                         placeholder="Enter an engaging title"
                       />
                     </div>
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Curriculum Subject</Label>
+                        <Select value={String(selectedSubjectId)} onValueChange={setSelectedSubjectId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subject" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {curriculumSubjects.map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>
+                                {s.subject_name} (Grade {s.grade_level})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Curriculum Topic</Label>
+                        <Select 
+                          value={String(selectedTopicId)} 
+                          onValueChange={setSelectedTopicId}
+                          disabled={!selectedSubjectId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select topic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {topics.map((t) => (
+                              <SelectItem key={t.id} value={String(t.id)}>
+                                {t.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Academic Concept</Label>
+                        <Select 
+                          value={String(lesson.concept_id)} 
+                          onValueChange={(v) => setLesson({...lesson, concept_id: parseInt(v)})}
+                          disabled={!selectedTopicId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select concept" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {concepts.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     
                     <div>
-                      <Label htmlFor="category">Category</Label>
+                      <Label htmlFor="category">Category (Legacy)</Label>
                       <Select 
                         value={lesson.category} 
                         onValueChange={(value) => setLesson(prev => ({ ...prev, category: value }))}

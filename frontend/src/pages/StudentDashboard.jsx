@@ -106,40 +106,45 @@ export default function StudentDashboard() {
         </div>
 
         {/* Level Progress Card */}
-        <div className="student-card p-6 md:p-8 mb-8 bg-gradient-to-br from-teal-50 to-sky-50 border border-teal-100/50 shadow-teal-900/5 animate-fadeInUp stagger-1">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
-                <Sparkles className="w-7 h-7 text-white" aria-hidden="true" />
+        <Link to="/achievements" className="block mb-8 group">
+          <div className="student-card p-6 md:p-8 bg-gradient-to-br from-teal-50 to-sky-50 border border-teal-100/50 shadow-teal-900/5 animate-fadeInUp stagger-1 transition-all group-hover:shadow-lg group-hover:shadow-teal-500/10 group-hover:border-teal-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-7 h-7 text-white" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-slate-800">Level {progress?.level || 1}</p>
+                  <p className="text-sm font-medium text-slate-500">
+                    <span className="text-teal-600 font-bold">{pointsToNextLevel} XP</span> to Level {(progress?.level || 1) + 1}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-lg font-bold text-slate-800">Level {progress?.level || 1}</p>
-                <p className="text-sm font-medium text-slate-500">
-                  <span className="text-teal-600 font-bold">{pointsToNextLevel} XP</span> to Level {(progress?.level || 1) + 1}
+              <div className="flex items-end justify-between md:block md:text-right">
+                <p className="text-3xl font-black font-accent text-teal-700 tabular-nums">
+                  {Math.round(levelProgress)}%
                 </p>
+                <div className="flex items-center justify-end gap-1">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Level Progress</p>
+                  <ChevronRight className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-all translate-x-1" />
+                </div>
               </div>
             </div>
-            <div className="flex items-end justify-between md:block md:text-right">
-              <p className="text-3xl font-black font-accent text-teal-700 tabular-nums">
-                {Math.round(levelProgress)}%
-              </p>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Level Progress</p>
+            <div 
+              className="w-full bg-slate-200/70 rounded-full h-3.5 overflow-hidden border border-slate-200/50 shadow-inner"
+              role="progressbar"
+              aria-valuenow={Math.round(levelProgress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Level ${progress?.level || 1} progress: ${Math.round(levelProgress)}%`}
+            >
+              <div 
+                className="h-full bg-gradient-to-r from-teal-500 via-teal-400 to-sky-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(45,212,191,0.5)]"
+                style={{ width: `${levelProgress}%` }}
+              ></div>
             </div>
           </div>
-          <div 
-            className="w-full bg-slate-200/70 rounded-full h-3.5 overflow-hidden border border-slate-200/50 shadow-inner"
-            role="progressbar"
-            aria-valuenow={Math.round(levelProgress)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`Level ${progress?.level || 1} progress: ${Math.round(levelProgress)}%`}
-          >
-            <div 
-              className="h-full bg-gradient-to-r from-teal-500 via-teal-400 to-sky-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(45,212,191,0.5)]"
-              style={{ width: `${levelProgress}%` }}
-            ></div>
-          </div>
-        </div>
+        </Link>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 animate-fadeInUp stagger-2">
@@ -148,24 +153,28 @@ export default function StudentDashboard() {
             label="Total Points" 
             value={progress?.points || 0} 
             color="amber" 
+            to="/achievements"
           />
           <StatCard 
             icon={HelpCircle} 
             label="Quizzes" 
             value={progress?.quizzes_completed || 0} 
             color="teal" 
+            to="/quizzes"
           />
           <StatCard 
             icon={Gamepad2} 
             label="Games" 
             value={progress?.games_played || 0} 
             color="purple" 
+            to="/games"
           />
           <StatCard 
             icon={Award} 
             label="Badges" 
             value={progress?.badges?.length || 0} 
             color="orange" 
+            to="/achievements"
           />
         </div>
 
@@ -290,21 +299,22 @@ export default function StudentDashboard() {
 }
 
 // Sub-components for cleaner structure
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, color, to }) {
   const colorMap = {
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
-    teal: "bg-teal-50 text-teal-600 border-teal-100",
-    purple: "bg-purple-50 text-purple-600 border-purple-100",
-    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    amber: "bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-100 group-hover:border-amber-200",
+    teal: "bg-teal-50 text-teal-600 border-teal-100 group-hover:bg-teal-100 group-hover:border-teal-200",
+    purple: "bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-100 group-hover:border-purple-200",
+    orange: "bg-orange-50 text-orange-600 border-orange-100 group-hover:bg-orange-100 group-hover:border-orange-200",
   };
 
-  return (
-    <div className={`student-card p-5 border shadow-sm ${colorMap[color] || ""}`}>
+  const Content = (
+    <div className={`student-card p-5 border shadow-sm transition-all duration-300 group-hover:shadow-md h-full ${colorMap[color] || ""}`}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color].split(' ')[0]} border shadow-sm`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color].split(' ')[0]} border shadow-sm group-hover:scale-110 transition-transform`}>
             <Icon className="w-5 h-5" />
           </div>
+          {to && <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />}
         </div>
         <div>
           <p className="text-xs text-slate-600 font-bold uppercase tracking-wider mb-1">{label}</p>
@@ -313,6 +323,16 @@ function StatCard({ icon: Icon, label, value, color }) {
       </div>
     </div>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className="group block h-full">
+        {Content}
+      </Link>
+    );
+  }
+
+  return <div className="h-full">{Content}</div>;
 }
 
 function ActionLink({ to, icon: Icon, title, desc, color, testId }) {

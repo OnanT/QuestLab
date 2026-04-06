@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     UPLOAD_PATH: str = "/app/uploads"
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,https://questlab.onan.shop,http://questlab.onan.shop"
     
     # Frontend
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = "https://questlab.onan.shop"
 
     # Default Organization
     DEFAULT_ORGANIZATION_ID: int = 1
